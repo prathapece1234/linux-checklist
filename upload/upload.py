@@ -51,14 +51,20 @@ ALLOWED_EXTENSIONS = {".html", ".htm", ".txt"}
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
 
-# Configure logging
+log_dir = "/var/log/health-dashboard"
+log_file = os.path.join(log_dir, "upload.log")
+handlers = [logging.StreamHandler(sys.stdout)]
+
+if os.path.isdir(log_dir):
+    try:
+        handlers.append(logging.FileHandler(log_file, mode="a"))
+    except Exception:
+        pass
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler("/var/log/health-dashboard-api.log", mode="a"),
-    ],
+    handlers=handlers,
 )
 logger = logging.getLogger(__name__)
 
