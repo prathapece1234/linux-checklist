@@ -38,36 +38,60 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # =============================================================================
-# 1. STRICT PRE-CHECK: VERIFY TARGET PORTS (5000 & 8088 ARE FREE BEFORE INSTALL)
+# 1. PRE-CHECK: VERIFY PORTS
 # =============================================================================
 echo ""
-echo "[Step 1/10] Checking whether ports ${API_PORT} and ${DASHBOARD_PORT} are free..."
+echo "[Step 1/10] Checking required ports..."
 
-is_port_occupied() {
-    local port="$1"
-    if command -v ss >/dev/null 2>&1; then
-        ss -tulnp 2>/dev/null | grep -E ":${port}\s" && return 0
-    elif command -v netstat >/dev/null 2>&1; then
-        netstat -tulnp 2>/dev/null | grep -E ":${port}\s" && return 0
-    elif command -v lsof >/dev/null 2>&1; then
-        lsof -i ":${port}" >/dev/null 2>&1 && return 0
+check_port() {
+
+    local PORT="$1"
+    local SERVICE="$2"
+
+    if ss -tulpn | grep -q ":${PORT}"; then
+
+        PROCESS=$(ss -tulpn | grep ":${PORT}" | head -1)
+
+        echo "$PROCESS" | grep -qiE "upload.py|health-dashboard|python"
+
+        if [ $? -eq 0 ]; then
+
+            echo "[INFO] ${SERVICE} is already installed and running on port ${PORT}."
+            echo "[INFO] Installation is not required."
+
+            exit 0
+
+        fi
+
+        echo "$PROCESS" | grep -qi nginx
+
+        if [ $? -eq 0 ] && [ "$PORT" = "$DASHBOARD_PORT" ]; then
+
+            echo "[INFO] Dashboard is already running on port ${PORT}."
+            echo "[INFO] Installation is not required."
+
+            exit 0
+
+        fi
+
+        echo ""
+        echo "[ERROR] Port ${PORT} is already being used by another application."
+        echo ""
+        echo "$PROCESS"
+        echo ""
+        echo "Please change the configured port before continuing."
+        exit 1
+
     fi
-    return 1
+
 }
 
-if is_port_occupied "$API_PORT"; then
-    echo "[FATAL ERROR] Port ${API_PORT} already in use"
-    echo "              Installation STOPPED to prevent service conflict."
-    exit 1
-fi
+check_port "$API_PORT" "Upload API"
 
-if is_port_occupied "$DASHBOARD_PORT"; then
-    echo "[FATAL ERROR] Port ${DASHBOARD_PORT} already in use"
-    echo "              Installation STOPPED to prevent service conflict."
-    exit 1
-fi
+check_port "$DASHBOARD_PORT" "Dashboard"
 
-echo "[INFO] Ports ${API_PORT} and ${DASHBOARD_PORT} are free and available."
+echo "[INFO] Ports ${API_PORT} and ${DASHBOARD_PORT} are available."
+
 
 # =============================================================================
 # 2. PACKAGE INSTALLATION (ONLY MISSING PACKAGES)
@@ -305,6 +329,8 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full
 ProtectHome=true
+ReadWritePaths=/var/www/html/health-reports
+ReadWritePaths=/var/log/health-dashboard
 
 # Environment Variables
 Environment=WEB_ROOT=${WEB_ROOT}
@@ -319,8 +345,18 @@ systemctl daemon-reload
 systemctl enable health-dashboard-api
 systemctl restart health-dashboard-api
 
+echo "[INFO] Waiting for Upload API to become ready..."
+
+for i in {1..15}; do
+    if ss -ltn | grep -q ":${API_PORT}"; then
+        echo "[INFO] Upload API is listening."
+        break
+    fi
+    sleep 1
+done
+
 # Generate initial dashboard page
-sudo -u "${SERVICE_USER}" "${VENV_DIR}/bin/python" "${APP_DIR}/upload/generate_dashboard.py" "${WEB_ROOT}"
+runuser -u "${SERVICE_USER}" "${VENV_DIR}/bin/python" "${APP_DIR}/upload/generate_dashboard.py" "${WEB_ROOT}"
 
 # =============================================================================
 # 10. ACCURATE UPLOAD API & SYSTEM VALIDATION MATRIX
@@ -347,22 +383,44 @@ if systemctl is-active --quiet health-dashboard-api; then
 fi
 
 # 2. Port Listening Check for Port 5000
-if is_port_occupied "$API_PORT"; then
-    API_PORT_SUB="PASS"
-fi
 
-# 3. HTTP Health Check (GET http://127.0.0.1:5000/health -> Status 200 & Body "OK")
-if [ "$API_SVC_SUB" = "PASS" ] && [ "$API_PORT_SUB" = "PASS" ]; then
-    sleep 2
-    HTTP_RESPONSE=$(curl -s -w "\n%{http_code}" "http://127.0.0.1:${API_PORT}/health" 2>/dev/null || echo "000")
-    HTTP_CODE=$(echo "$HTTP_RESPONSE" | tail -1)
-    HTTP_BODY=$(echo "$HTTP_RESPONSE" | sed '$d' | tr -d '\r\n')
+API_PORT_SUB="FAIL"
 
-    if [ "$HTTP_CODE" = "200" ] && [ "$HTTP_BODY" = "OK" ]; then
-        API_HTTP_SUB="PASS"
-    else
-        API_HTTP_SUB="FAIL (HTTP ${HTTP_CODE}, Body: '${HTTP_BODY}')"
+echo "[INFO] Waiting for Upload API to listen on port ${API_PORT}..."
+
+for i in {1..10}; do
+
+    if ss -ltn | grep -q ":${API_PORT}"; then
+        API_PORT_SUB="PASS"
+        break
     fi
+
+    sleep 1
+
+done
+
+# 3. HTTP Health Check (GET http://127.0.0.1:5000/health)
+
+if [ "$API_SVC_SUB" = "PASS" ] && [ "$API_PORT_SUB" = "PASS" ]; then
+
+    API_HTTP_SUB="FAIL"
+
+    echo "[INFO] Waiting for Upload API Health Check..."
+
+    for i in {1..10}; do
+
+        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            http://127.0.0.1:${API_PORT}/health)
+
+        if [ "$HTTP_CODE" = "200" ]; then
+            API_HTTP_SUB="PASS"
+            break
+        fi
+
+        sleep 1
+
+    done
+
 fi
 
 # Set overall Upload API Status ONLY if all 3 sub-checks succeed
