@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise Linux Health Dashboard</title>
+    <link rel="stylesheet" href="static/bootstrap.min.css">
+    <link rel="stylesheet" href="templates/style.css">
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow-sm">
+        <div class="container-fluid">
+            <a class="navbar-brand font-monospace fw-bold" href="#">
+                <i class="bi bi-speedometer2 me-2 text-primary"></i>Enterprise Linux Health Dashboard
+            </a>
+        </div>
+    </nav>
+
+    <div class="container-fluid py-4">
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <input type="text" id="searchInput" class="form-control" placeholder="Search servers by name, IP, or OS..." onkeyup="filterTable()">
+            </div>
+            <div class="col-md-6 text-end">
+                <button class="btn btn-outline-secondary" onclick="filterByStatus('all', this)">All</button>
+                <button class="btn btn-outline-success" onclick="filterByStatus('pass', this)">PASS</button>
+                <button class="btn btn-outline-warning" onclick="filterByStatus('warning', this)">WARNING</button>
+                <button class="btn btn-outline-danger" onclick="filterByStatus('fail', this)">FAIL</button>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="serverTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Hostname</th>
+                                <th>OS</th>
+                                <th>IP Address</th>
+                                <th>Last Report Time</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Dynamically populated by generate_dashboard.py -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer mt-auto py-3 bg-dark text-white text-center">
+        <div class="container">
+            <span class="text-muted">Enterprise Linux Health Monitoring System &copy; 2026</span>
+        </div>
+    </footer>
+</body>
+</html>
