@@ -38,30 +38,30 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # =============================================================================
-# 1. STRICT PRE-CHECK: VERIFY TARGET PORTS (5000 & 8088)
+# 1. STRICT PRE-CHECK: VERIFY TARGET PORTS (5000 & 8088 ARE FREE BEFORE INSTALL)
 # =============================================================================
 echo ""
 echo "[Step 1/10] Checking whether ports ${API_PORT} and ${DASHBOARD_PORT} are free..."
 
-is_port_in_use() {
+is_port_occupied() {
     local port="$1"
     if command -v ss >/dev/null 2>&1; then
-        ss -tulnp 2>/dev/null | grep -q ":${port} " && return 0
+        ss -tulnp 2>/dev/null | grep -E ":${port}\s" && return 0
     elif command -v netstat >/dev/null 2>&1; then
-        netstat -tulnp 2>/dev/null | grep -q ":${port} " && return 0
+        netstat -tulnp 2>/dev/null | grep -E ":${port}\s" && return 0
     elif command -v lsof >/dev/null 2>&1; then
         lsof -i ":${port}" >/dev/null 2>&1 && return 0
     fi
     return 1
 }
 
-if is_port_in_use "$API_PORT"; then
+if is_port_occupied "$API_PORT"; then
     echo "[FATAL ERROR] Port ${API_PORT} already in use"
     echo "              Installation STOPPED to prevent service conflict."
     exit 1
 fi
 
-if is_port_in_use "$DASHBOARD_PORT"; then
+if is_port_occupied "$DASHBOARD_PORT"; then
     echo "[FATAL ERROR] Port ${DASHBOARD_PORT} already in use"
     echo "              Installation STOPPED to prevent service conflict."
     exit 1
@@ -110,7 +110,6 @@ if [ "$PKG_MGR" = "apt" ]; then
     install_if_missing "python3-pip" "pip3"
 fi
 
-# Step 1 Check Nginx binary existence
 if ! command -v nginx >/dev/null 2>&1; then
     echo "[INFO] Nginx binary not found. Installing Nginx..."
     install_if_missing "nginx" "nginx"
@@ -149,26 +148,37 @@ mkdir -p "${WEB_ROOT}/static"
 mkdir -p "${LOG_DIR}"
 
 # =============================================================================
-# 4. PYTHON VIRTUAL ENVIRONMENT
+# 4. PYTHON VIRTUAL ENVIRONMENT VALIDATION & REBUILD LOGIC
 # =============================================================================
 echo ""
-echo "[Step 4/10] Setting Up Python Virtual Environment..."
+echo "[Step 4/10] Validating Python Virtual Environment (${VENV_DIR})..."
+
+# Check if python/pip inside venv are executable; if invalid/missing, auto-rebuild
+if [ -d "${VENV_DIR}" ]; then
+    if [ ! -x "${VENV_DIR}/bin/python" ] || [ ! -x "${VENV_DIR}/bin/pip" ]; then
+        echo "[WARNING] Virtual environment at ${VENV_DIR} is corrupt or missing execute permissions."
+        echo "[INFO] Automatically deleting broken venv and rebuilding..."
+        rm -rf "${VENV_DIR}"
+    fi
+fi
 
 if [ ! -d "${VENV_DIR}" ]; then
+    echo "[INFO] Creating new Python virtual environment..."
     python3 -m venv "${VENV_DIR}"
     echo "[INFO] Created Python venv at ${VENV_DIR}."
 else
-    echo "[INFO] Python venv already exists at ${VENV_DIR}."
+    echo "[INFO] Valid Python venv found at ${VENV_DIR}."
 fi
 
-"${VENV_DIR}/bin/pip" install --quiet --upgrade pip setuptools
-"${VENV_DIR}/bin/pip" install --quiet flask gunicorn
+echo "[INFO] Installing / Updating dependencies inside venv..."
+"${VENV_DIR}/bin/python" -m pip install --quiet --upgrade pip setuptools
+"${VENV_DIR}/bin/python" -m pip install --quiet flask gunicorn
 
 # =============================================================================
-# 5. COPY APPLICATION FILES & APPLY STRICT PERMISSIONS
+# 5. COPY APPLICATION FILES & SCOPED PERMISSIONS (DO NOT TOUCH VENV)
 # =============================================================================
 echo ""
-echo "[Step 5/10] Copying Application Files & Applying Security Permissions..."
+echo "[Step 5/10] Copying Application Files & Applying Scoped Security Permissions..."
 
 cp -r "${SCRIPT_DIR}/upload/"* "${APP_DIR}/upload/"
 cp -r "${SCRIPT_DIR}/templates/"* "${APP_DIR}/templates/"
@@ -177,8 +187,12 @@ chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "${APP_DIR}"
 chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "${WEB_ROOT}"
 chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "${LOG_DIR}"
 
-find "${APP_DIR}" -type d -exec chmod 755 {} +
-find "${APP_DIR}" -type f -exec chmod 644 {} +
+# Apply permissions ONLY to upload and templates (Do NOT modify /opt/health-dashboard/venv permissions)
+find "${APP_DIR}/upload" -type d -exec chmod 755 {} +
+find "${APP_DIR}/upload" -type f -exec chmod 644 {} +
+find "${APP_DIR}/templates" -type d -exec chmod 755 {} +
+find "${APP_DIR}/templates" -type f -exec chmod 644 {} +
+
 chmod 755 "${APP_DIR}/upload/upload.py" "${APP_DIR}/upload/generate_dashboard.py"
 
 find "${WEB_ROOT}" -type d -exec chmod 755 {} +
@@ -197,7 +211,6 @@ elif [ -d /etc/nginx/sites-available ]; then
     ln -sf /etc/nginx/sites-available/health-dashboard.conf /etc/nginx/sites-enabled/health-dashboard.conf
 fi
 
-# Step 2: Validate Nginx syntax
 echo "[INFO] Validating Nginx configuration syntax (nginx -t)..."
 if ! nginx -t; then
     echo "[FATAL ERROR] Nginx configuration validation failed!"
@@ -207,7 +220,7 @@ fi
 echo "[INFO] Nginx syntax check passed successfully."
 
 # =============================================================================
-# 7. NGINX SERVICE HANDLING (RELOAD IF ACTIVE, START IF INACTIVE, EXIT IF FAILED)
+# 7. NGINX SERVICE STATE HANDLING
 # =============================================================================
 echo ""
 echo "[Step 7/10] Managing Nginx Service State..."
@@ -310,10 +323,11 @@ systemctl restart health-dashboard-api
 sudo -u "${SERVICE_USER}" "${VENV_DIR}/bin/python" "${APP_DIR}/upload/generate_dashboard.py" "${WEB_ROOT}"
 
 # =============================================================================
-# 10. FINAL VALIDATION & INSTALLATION SUMMARY MATRIX
+# 10. ACCURATE UPLOAD API & SYSTEM VALIDATION MATRIX
 # =============================================================================
 echo ""
-echo "[Step 10/10] Executing Final System Validation..."
+echo "[Step 10/10] Executing Detailed System Validation Matrix..."
+echo "------------------------------------------------------------"
 
 VAL_NGINX_SVC="FAIL"
 VAL_FLASK_SVC="FAIL"
@@ -321,32 +335,64 @@ VAL_PORT_DASH="FAIL"
 VAL_PORT_API="FAIL"
 VAL_OVERALL="FAIL"
 
-# Check Nginx status
+# Detailed sub-checks for Upload API
+API_SVC_SUB="FAIL"
+API_PORT_SUB="FAIL"
+API_HTTP_SUB="NOT EXECUTED"
+
+# 1. Systemd Service Check
+if systemctl is-active --quiet health-dashboard-api; then
+    API_SVC_SUB="PASS"
+    VAL_FLASK_SVC="PASS"
+fi
+
+# 2. Port Listening Check for Port 5000
+if is_port_occupied "$API_PORT"; then
+    API_PORT_SUB="PASS"
+fi
+
+# 3. HTTP Health Check (GET http://127.0.0.1:5000/health -> Status 200 & Body "OK")
+if [ "$API_SVC_SUB" = "PASS" ] && [ "$API_PORT_SUB" = "PASS" ]; then
+    sleep 2
+    HTTP_RESPONSE=$(curl -s -w "\n%{http_code}" "http://127.0.0.1:${API_PORT}/health" 2>/dev/null || echo "000")
+    HTTP_CODE=$(echo "$HTTP_RESPONSE" | tail -1)
+    HTTP_BODY=$(echo "$HTTP_RESPONSE" | sed '$d' | tr -d '\r\n')
+
+    if [ "$HTTP_CODE" = "200" ] && [ "$HTTP_BODY" = "OK" ]; then
+        API_HTTP_SUB="PASS"
+    else
+        API_HTTP_SUB="FAIL (HTTP ${HTTP_CODE}, Body: '${HTTP_BODY}')"
+    fi
+fi
+
+# Set overall Upload API Status ONLY if all 3 sub-checks succeed
+if [ "$API_SVC_SUB" = "PASS" ] && [ "$API_PORT_SUB" = "PASS" ] && [ "$API_HTTP_SUB" = "PASS" ]; then
+    VAL_PORT_API="PASS"
+else
+    VAL_PORT_API="FAIL"
+fi
+
+# Nginx Checks
 if systemctl is-active --quiet nginx; then
     VAL_NGINX_SVC="PASS"
 fi
 
-# Check Flask service status
-if systemctl is-active --quiet health-dashboard-api; then
-    VAL_FLASK_SVC="PASS"
-fi
-
-# Check Dashboard port
 if is_nginx_listening_dashboard; then
     VAL_PORT_DASH="PASS"
 fi
 
-# Check API port
-if is_port_in_use "$API_PORT"; then
-    VAL_PORT_API="PASS"
-fi
-
-# Overall calculation
+# Overall Status calculation
 if [ "$VAL_NGINX_SVC" = "PASS" ] && [ "$VAL_FLASK_SVC" = "PASS" ] && [ "$VAL_PORT_DASH" = "PASS" ] && [ "$VAL_PORT_API" = "PASS" ]; then
     VAL_OVERALL="PASS"
 fi
 
 SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "SERVER_IP")
+
+echo ""
+echo "Upload API Sub-Check Diagnostic Breakdown:"
+echo "  - Service Status    (health-dashboard-api) : ${API_SVC_SUB}"
+echo "  - Port Listening    (Port ${API_PORT})           : ${API_PORT_SUB}"
+echo "  - HTTP Health Check (GET /health)         : ${API_HTTP_SUB}"
 
 echo ""
 echo "============================================================"
@@ -355,8 +401,8 @@ echo "============================================================"
 printf " Dashboard URL  : http://%s:%s/\n" "$SERVER_IP" "$DASHBOARD_PORT"
 printf " Upload API URL : http://%s:%s/upload\n" "$SERVER_IP" "$API_PORT"
 echo "------------------------------------------------------------"
-printf " %-35s Status: [%s]\n" "Nginx Service" "$VAL_NGINX_SVC"
-printf " %-35s Status: [%s]\n" "Flask API Service" "$VAL_FLASK_SVC"
+printf " %-35s Status: [%s]\n" "Nginx Web Server Service" "$VAL_NGINX_SVC"
+printf " %-35s Status: [%s]\n" "Flask API Service State" "$VAL_FLASK_SVC"
 printf " %-35s Status: [%s]\n" "Dashboard Port (${DASHBOARD_PORT})" "$VAL_PORT_DASH"
 printf " %-35s Status: [%s]\n" "Upload API Port (${API_PORT})" "$VAL_PORT_API"
 echo "------------------------------------------------------------"
@@ -367,6 +413,6 @@ if [ "$VAL_OVERALL" = "PASS" ]; then
     echo "[SUCCESS] Installation completed successfully with zero issues."
     exit 0
 else
-    echo "[ERROR] Installation encountered errors. Please inspect ${INSTALL_LOG}."
+    echo "[ERROR] Installation validation failed. Check log file: ${INSTALL_LOG}"
     exit 1
 fi

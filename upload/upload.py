@@ -275,14 +275,9 @@ def upload_report():
 
 
 @app.route("/health", methods=["GET"])
-def health_check():
+def health():
     """API health check endpoint."""
-    return jsonify({
-        "status": "healthy",
-        "service": "Enterprise Linux Health Dashboard API",
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "web_root": WEB_ROOT,
-    }), 200
+    return "OK", 200
 
 
 @app.route("/hosts", methods=["GET"])
