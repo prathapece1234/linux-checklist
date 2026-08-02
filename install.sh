@@ -348,7 +348,7 @@ systemctl restart health-dashboard-api
 echo "[INFO] Waiting for Upload API to become ready..."
 
 for i in {1..15}; do
-    if ss -ltn | grep -q ":${API_PORT}"; then
+	if ss -ltn | awk '{print $4}' | grep -Eq "[:.]${API_PORT}$"; then
         echo "[INFO] Upload API is listening."
         break
     fi

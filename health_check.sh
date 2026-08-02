@@ -209,11 +209,10 @@ txt_line() {
 }
 
 html_escape() {
-    local text="$1"
-    text="${text//&/&amp;}"
-    text="${text//</&lt;}"
-    text="${text//>/&gt;}"
-    echo "$text"
+    printf '%s' "$1" | sed \
+        -e 's/&/\&amp;/g' \
+        -e 's/</\&lt;/g' \
+        -e 's/>/\&gt;/g'
 }
 
 html_report_start() {
@@ -526,7 +525,7 @@ mkdir -p "${REPORT_DIR}" 2>/dev/null
 detect_os
 
 CURRENT_HOSTNAME=$(hostname 2>/dev/null || echo "unknown")
-CURRENT_IP=$(hostname -i 2>/dev/null | awk '{print $1}' || echo "N/A")
+CURRENT_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "N/A")
 CURRENT_FQDN=$(hostname -f 2>/dev/null || echo "$CURRENT_HOSTNAME")
 CURRENT_DATE=$(date "+${TIMESTAMP_FORMAT}")
 CURRENT_DATE_DISPLAY=$(date "+%Y-%m-%d %H:%M:%S")
@@ -562,11 +561,19 @@ html_report_start "$CURRENT_HOSTNAME" "$CURRENT_IP" "$OS_FULL" "$CURRENT_DATE_DI
 # 1. SYSTEM INFORMATION
 date_out=$(date 2>/dev/null)
 hostname_out=$(hostname 2>/dev/null)
-hostname_ip_out=$(hostname -i 2>/dev/null)
+hostname_ip_out=$(hostname -I | awk '{print $1}' 2>/dev/null)
 hostname_fqdn_out=$(hostname -f 2>/dev/null)
 uptime_out=$(uptime 2>/dev/null)
 uname_out=$(uname -r 2>/dev/null)
 nproc_out=$(nproc 2>/dev/null)
+ram_out=$(awk '/MemTotal/ {printf "%.1f GB",$2/1024/1024}' /proc/meminfo)
+# NIC Count
+if command -v ip >/dev/null 2>&1; then
+    nic_count_out=$(ip -o link show 2>/dev/null | awk -F': ' '$2!="lo"{count++} END{print count+0}')
+else
+    nic_count_out=$(ifconfig -a 2>/dev/null | grep '^[a-zA-Z]' | grep -v '^lo' | wc -l)
+fi
+
 os_release_out=""
 [ -f /etc/redhat-release ] && os_release_out=$(cat /etc/redhat-release)
 os_details_out=""
@@ -580,11 +587,13 @@ txt_cmd "Hostname FQDN" "$hostname_fqdn_out"
 txt_cmd "Uptime" "$uptime_out"
 txt_cmd "Kernel" "$uname_out"
 txt_cmd "CPU Cores" "$nproc_out"
+txt_cmd "Memory" "$ram_out"
+txt_cmd "NIC Count" "$nic_count_out"
 [ -n "$os_release_out" ] && txt_cmd "OS Release" "$os_release_out"
 [ -n "$os_details_out" ] && txt_cmd "OS Details" "$os_details_out"
 
 html_section_open "system-info" "System Information"
-html_info_table "Hostname" "$hostname_out" "FQDN" "$hostname_fqdn_out" "IP Address" "$hostname_ip_out" "OS" "$OS_FULL" "Kernel" "$uname_out" "CPU Cores" "$nproc_out" "Uptime" "$uptime_out"
+html_info_table "Hostname" "$hostname_out" "FQDN" "$hostname_fqdn_out" "IP Address" "$hostname_ip_out" "OS" "$OS_FULL" "Kernel" "$uname_out" "CPU Cores" "$nproc_out" "Memory" "$ram_out" "NIC Count" "$nic_count_out" "Uptime" "$uptime_out"
 [ -n "$os_details_out" ] && html_cmd_output "cat /etc/os-release" "$os_details_out"
 html_section_close
 
