@@ -5,7 +5,7 @@
 # Single self-contained script for production Linux client servers.
 # Collects system metrics and generates TXT and HTML reports.
 #
-# Supported OS: RHEL 6, 7, 8, 9, 10 | Ubuntu 18, 20, 22, 24
+# Supported OS: RHEL 6, 7, 8, 9, 10 | Ubuntu 18, 20, 22, 24 | amazon linux
 #
 # Usage:
 #   chmod +x health_check.sh
@@ -72,15 +72,44 @@ detect_os() {
                 ;;
         esac
     elif [ -f /etc/os-release ]; then
-        . /etc/os-release
-        if [ "$ID" = "ubuntu" ] || [ "$ID" = "debian" ]; then
-            OS_FAMILY="Ubuntu"
-            OS_VERSION=$(echo "$VERSION_ID" | cut -d. -f1)
-            OS_FULL="${PRETTY_NAME:-Ubuntu ${VERSION_ID}}"
+    . /etc/os-release
+
+        case "$ID" in
+		amzn)
+			OS_FAMILY="Amazon Linux"
+               		OS_VERSION=$(echo "$VERSION_ID" | cut -d. -f1)
+            		OS_FULL="${PRETTY_NAME}"
+
+            		USE_SYSTEMCTL=true
+           	 	USE_FIREWALLD=true
+            		USE_IP=true
+            		USE_SS=true
+            		USE_CHKCONFIG=false
+            		;;
+
+        	ubuntu|debian)
+            		OS_FAMILY="Ubuntu"
+            		OS_VERSION=$(echo "$VERSION_ID" | cut -d. -f1)
+            		OS_FULL="${PRETTY_NAME}"
+
+            		USE_SYSTEMCTL=true
+            		USE_UFW=true
+            		USE_IP=true
+            		USE_SS=true
+            		;;
+
+        *)
+            OS_FAMILY="$NAME"
+            OS_VERSION="$VERSION_ID"
+            OS_FULL="${PRETTY_NAME:-$NAME}"
+
             USE_SYSTEMCTL=true
-            USE_UFW=true
-        fi
-    fi
+            USE_IP=true
+            USE_SS=true
+            ;;
+    esac
+fi
+
 
     command -v systemctl >/dev/null 2>&1 && USE_SYSTEMCTL=true
     command -v ip >/dev/null 2>&1 && USE_IP=true
@@ -184,7 +213,6 @@ html_escape() {
     text="${text//&/&amp;}"
     text="${text//</&lt;}"
     text="${text//>/&gt;}"
-    text="${text//\"/&quot;}"
     echo "$text"
 }
 
@@ -205,7 +233,7 @@ HTMLHEADER
 
     cat >> "$HTML_REPORT" << HTMLMETA
     <meta name="report-hostname" content="${hostname_val}">
-    <meta name="report-os" content="${os_info}">
+    <meta name="report-os" content="${OS_FULL}">
     <meta name="report-ip" content="${ip_addr}">
     <meta name="report-date" content="${report_date}">
     <meta name="report-status" content="COMPLETED">
