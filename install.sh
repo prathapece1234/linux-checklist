@@ -278,20 +278,25 @@ find "${WEB_ROOT}" -type d -exec chmod 755 {} +
 find "${WEB_ROOT}" -type f -exec chmod 644 {} +
 
 # =============================================================================
-# 6. GENERATE SECRET KEY & ENVIRONMENT FILE
+# 6. CLIENT BRANDING & ENVIRONMENT CONFIGURATION
 # =============================================================================
 echo ""
-echo "[Step 6/11] Environment Configuration..."
+echo "[Step 6/11] Client Branding & Environment Configuration..."
+echo "------------------------------------------------------------"
 
 DEFAULT_CLIENT="XIUS (XCO – XIUS Central Office)"
-CLIENT_NAME_VAL="${DEFAULT_CLIENT}"
+EXISTING_CLIENT=$(grep "^CLIENT_NAME=" "${ENV_FILE}" 2>/dev/null | cut -d'=' -f2- | tr -d '"' || echo "")
+PROMPT_DEFAULT="${EXISTING_CLIENT:-$DEFAULT_CLIENT}"
 
-if [ "$IS_UPGRADE" = false ] && [ -t 0 ]; then
+CLIENT_NAME_VAL="${PROMPT_DEFAULT}"
+
+if [ -t 0 ]; then
     echo ""
-    read -rp "Enter Client Name [Default: ${DEFAULT_CLIENT}]: " INPUT_CLIENT_NAME
+    read -rp "Enter Client Name [Default: ${PROMPT_DEFAULT}]: " INPUT_CLIENT_NAME
     if [ -n "${INPUT_CLIENT_NAME}" ]; then
         CLIENT_NAME_VAL="${INPUT_CLIENT_NAME}"
     fi
+    echo "[INFO] Configured Client Name: ${CLIENT_NAME_VAL}"
 fi
 
 if [ ! -f "${ENV_FILE}" ]; then
@@ -310,10 +315,12 @@ EOF
     chmod 600 "${ENV_FILE}"
     echo "[INFO] Generated new secret key and environment file."
 else
-    if ! grep -q "^CLIENT_NAME=" "${ENV_FILE}"; then
+    if grep -q "^CLIENT_NAME=" "${ENV_FILE}"; then
+        sed -i "s|^CLIENT_NAME=.*|CLIENT_NAME=\"${CLIENT_NAME_VAL}\"|" "${ENV_FILE}"
+    else
         echo "CLIENT_NAME=\"${CLIENT_NAME_VAL}\"" >> "${ENV_FILE}"
     fi
-    echo "[INFO] Existing environment file found (${ENV_FILE}). Settings updated/preserved."
+    echo "[INFO] Environment file updated with Client Name."
 fi
 
 # =============================================================================
