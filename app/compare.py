@@ -216,6 +216,8 @@ def normalize_service_status(st):
         return "Running"
     elif st_upper in ("STOPPED", "INACTIVE", "DEAD"):
         return "Stopped"
+    elif st_upper in ("FAILED", "ERROR"):
+        return "Failed"
     elif st_upper in ("NOT_INSTALLED", "N/A", "UNKNOWN", ""):
         return "Not Installed"
     return st_upper.title()
@@ -237,11 +239,6 @@ def compare_services(old, new):
         norm_old = normalize_service_status(raw_old)
         norm_new = normalize_service_status(raw_new)
 
-        # Omit services that are Not Installed in BOTH reports to eliminate clutter
-        if norm_old == "Not Installed" and norm_new == "Not Installed":
-            continue
-
-        # Running -> Running or Stopped -> Stopped = NO_CHANGE (is_drift = False)
         if norm_old == norm_new:
             results.append({
                 "item": f"Service: {svc}",
@@ -249,6 +246,24 @@ def compare_services(old, new):
                 "current": norm_new,
                 "status": "NO_CHANGE",
                 "is_drift": False,
+                "type": "text",
+            })
+        elif norm_old == "Not Installed" and norm_new != "Not Installed":
+            results.append({
+                "item": f"Service: {svc}",
+                "previous": norm_old,
+                "current": norm_new,
+                "status": "ADDED",
+                "is_drift": True,
+                "type": "text",
+            })
+        elif norm_old != "Not Installed" and norm_new == "Not Installed":
+            results.append({
+                "item": f"Service: {svc}",
+                "previous": norm_old,
+                "current": norm_new,
+                "status": "REMOVED",
+                "is_drift": True,
                 "type": "text",
             })
         else:
@@ -264,11 +279,15 @@ def compare_services(old, new):
     return results
 
 
-def filter_primary_ips(ip_list):
-    """Filter out temporary interfaces (docker0, br-*, veth*, lo, fe80::*)."""
+def parse_interface_ips(ip_list):
+    """
+    Parse ip_addresses list into a dict mapping {interface_name: ip_cidr}.
+    Ignores temporary IPv6 link-local addresses (fe80::*).
+    """
     if not isinstance(ip_list, list):
-        return []
-    filtered = []
+        return {}
+
+    ifaces = {}
     for entry in ip_list:
         s = str(entry).strip()
         if not s:
@@ -277,41 +296,72 @@ def filter_primary_ips(ip_list):
         if len(parts) >= 2:
             iface, ip = parts[0], parts[1]
         else:
-            iface, ip = "", s
+            continue
 
-        if iface in ("lo", "docker0") or iface.startswith("br-") or iface.startswith("veth"):
+        if ip.startswith("fe80::"):
             continue
-        if ip.startswith("fe80::") or ip.startswith("127.0.0.1") or ip.startswith("::1"):
-            continue
-        filtered.append(f"{iface} {ip}".strip())
-    return filtered
+
+        if iface not in ifaces:
+            ifaces[iface] = ip
+        else:
+            ifaces[iface] = f"{ifaces[iface]}, {ip}"
+
+    return ifaces
 
 
 def compare_network(old, new):
-    """Compare Network configuration (Primary IPs & Full Route Table). Ignore temporary interfaces."""
+    """Compare Network configuration (All Interfaces & Full Route Table via ip route show)."""
     results = []
     net_old = old.get("network", {})
     net_new = new.get("network", {})
 
-    old_raw_ips = net_old.get("ip_addresses", [])
-    new_raw_ips = net_new.get("ip_addresses", [])
+    old_ifaces = parse_interface_ips(net_old.get("ip_addresses", []))
+    new_ifaces = parse_interface_ips(net_new.get("ip_addresses", []))
 
-    old_primary = filter_primary_ips(old_raw_ips)
-    new_primary = filter_primary_ips(new_raw_ips)
+    all_ifaces = sorted(set(list(old_ifaces.keys()) + list(new_ifaces.keys())))
 
-    old_ips_str = "\n".join(old_primary) if old_primary else "None"
-    new_ips_str = "\n".join(new_primary) if new_primary else "None"
-    ip_changed = old_ips_str != new_ips_str
+    for iface in all_ifaces:
+        old_ip = old_ifaces.get(iface, "Not Configured")
+        new_ip = new_ifaces.get(iface, "Not Configured")
 
-    results.append({
-        "item": "Primary IP Addresses",
-        "previous": old_ips_str,
-        "current": new_ips_str,
-        "status": "CHANGED" if ip_changed else "NO_CHANGE",
-        "is_drift": ip_changed,
-        "type": "multiline",
-    })
+        if old_ip == new_ip:
+            results.append({
+                "item": f"Interface: {iface}",
+                "previous": old_ip,
+                "current": new_ip,
+                "status": "NO_CHANGE",
+                "is_drift": False,
+                "type": "text",
+            })
+        elif old_ip == "Not Configured":
+            results.append({
+                "item": f"Interface: {iface}",
+                "previous": "Not Configured",
+                "current": new_ip,
+                "status": "ADDED",
+                "is_drift": True,
+                "type": "text",
+            })
+        elif new_ip == "Not Configured":
+            results.append({
+                "item": f"Interface: {iface}",
+                "previous": old_ip,
+                "current": "Not Configured",
+                "status": "REMOVED",
+                "is_drift": True,
+                "type": "text",
+            })
+        else:
+            results.append({
+                "item": f"Interface: {iface}",
+                "previous": old_ip,
+                "current": new_ip,
+                "status": "CHANGED",
+                "is_drift": True,
+                "type": "text",
+            })
 
+    # Route Table Comparison
     old_routes = net_old.get("routes", [])
     new_routes = net_new.get("routes", [])
 
