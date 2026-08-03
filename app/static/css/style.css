@@ -62,55 +62,94 @@ a:hover { text-decoration: underline; }
     gap: 12px;
 }
 
-/* Right Header 3-Line Compact Stack */
-.nav-right-stack {
+/* Right Header User Profile & Logout Button */
+.nav-right-user-area {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+}
+
+.user-profile-badge {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.user-avatar-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1754D1 0%, #3B82F6 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    flex-shrink: 0;
+}
+
+.user-info-text {
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
-    text-align: right;
-    gap: 2px;
+    justify-content: center;
 }
 
-.header-client-title {
-    color: #ffffff;
-    font-size: 1.05em;
+.user-welcome-sub {
+    font-size: 11px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.75);
+    line-height: 1.1;
+}
+
+.user-name-title {
+    font-size: 15px;
     font-weight: 700;
-    line-height: 1.2;
-    letter-spacing: 0.2px;
-    white-space: nowrap;
-}
-
-.header-welcome-text {
-    color: rgba(255, 255, 255, 0.85);
-    font-size: 0.84em;
-    font-weight: 400;
-    line-height: 1.2;
-    white-space: nowrap;
-}
-
-.header-welcome-text strong {
     color: #ffffff;
-    font-weight: 600;
-}
-
-.header-logout-wrap {
+    line-height: 1.2;
     margin-top: 1px;
 }
 
-.header-logout-btn {
-    color: rgba(255, 255, 255, 0.8);
-    font-size: 0.78em;
-    font-weight: 500;
+/* White 44px Height Logout Button */
+.header-white-logout-btn {
+    height: 44px;
+    padding: 0 20px;
+    border-radius: 12px;
+    background: #ffffff;
+    color: #1E293B;
+    font-size: 0.9em;
+    font-weight: 600;
     text-decoration: none;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    transition: color 0.2s ease;
+    gap: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
 }
 
-.header-logout-btn:hover {
-    color: #ffffff;
-    text-decoration: underline;
+.header-white-logout-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+    background-color: #f8fafc;
+    color: #0f172a;
+}
+
+/* Page Title Client Section */
+.page-client-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 14px;
+}
+
+.page-client-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #64748B;
+}
+
+.page-client-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1754D1;
 }
 
 .nav-right {
