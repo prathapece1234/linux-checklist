@@ -378,13 +378,22 @@ HTMLMETA
         }
         .side-nav a:hover {
             background: #F8FAFC;
-            color: #1754D1;
+            color: #C61D24;
         }
         .side-nav a.active {
-            color: #1754D1;
-            background: #EFF6FF;
-            border-left: 3px solid #1754D1;
+            color: #C61D24;
+            background: #FDF2F2;
+            border-left: 3.5px solid #C61D24;
+            border-top-left-radius: 4px;
+            border-bottom-left-radius: 4px;
             font-weight: 600;
+        }
+
+        .nav-item-icon {
+            display: inline-block;
+            margin-right: 8px;
+            opacity: 0.75;
+            font-size: 0.95em;
         }
 
         .main-content {
