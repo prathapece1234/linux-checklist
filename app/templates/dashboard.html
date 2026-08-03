@@ -10,38 +10,38 @@
     </div>
 </div>
 
-<!-- Interactive Summary Cards -->
+<!-- Interactive Summary Cards with Lucide Icons -->
 <div class="summary-row">
     <div class="stat-card clickable-card" onclick="filterByStatus('all')" title="Click to view all servers">
-        <div class="stat-icon">&#x1F5A5;</div>
+        <div class="stat-icon"><i data-lucide="server"></i></div>
         <div class="stat-info">
             <span class="stat-number">{{ total_servers }}</span>
             <span class="stat-label">Total Servers</span>
         </div>
     </div>
     <div class="stat-card clickable-card" onclick="filterByStatus('all')" title="Click to view all reports">
-        <div class="stat-icon">&#x1F4CB;</div>
+        <div class="stat-icon"><i data-lucide="files"></i></div>
         <div class="stat-info">
             <span class="stat-number">{{ total_reports }}</span>
             <span class="stat-label">Total Reports</span>
         </div>
     </div>
     <div class="stat-card stat-healthy clickable-card" onclick="filterByStatus('healthy')" title="Click to filter Healthy servers">
-        <div class="stat-icon">&#x2714;</div>
+        <div class="stat-icon"><i data-lucide="circle-check-big"></i></div>
         <div class="stat-info">
             <span class="stat-number">{{ healthy_count }}</span>
             <span class="stat-label">Healthy</span>
         </div>
     </div>
     <div class="stat-card stat-warning clickable-card" onclick="filterByStatus('warning')" title="Click to filter Warning servers">
-        <div class="stat-icon">&#x26A0;</div>
+        <div class="stat-icon"><i data-lucide="triangle-alert"></i></div>
         <div class="stat-info">
             <span class="stat-number">{{ warning_count }}</span>
             <span class="stat-label">Warnings</span>
         </div>
     </div>
     <div class="stat-card stat-critical clickable-card" onclick="filterByStatus('critical')" title="Click to filter Critical/Failed servers">
-        <div class="stat-icon">&#x2716;</div>
+        <div class="stat-icon"><i data-lucide="circle-x"></i></div>
         <div class="stat-info">
             <span class="stat-number">{{ critical_count }}</span>
             <span class="stat-label">Critical</span>
@@ -52,7 +52,7 @@
 <!-- Search & Filter Controls -->
 <div class="filter-bar">
     <div class="search-input-wrap">
-        <span class="search-icon">&#x1F50D;</span>
+        <span class="search-icon"><i data-lucide="search" style="width:18px;height:18px;"></i></span>
         <input type="text" id="searchInput" placeholder="Search servers by hostname, OS, IP, kernel..." onkeyup="applyDashboardFilters()">
     </div>
 
@@ -76,7 +76,7 @@
         </select>
     </div>
 
-    <button type="button" class="btn btn-secondary" onclick="resetFilters()">Reset Filters</button>
+    <button type="button" class="btn btn-secondary" onclick="resetFilters()"><i data-lucide="rotate-ccw" style="width:16px;height:16px;"></i> Reset Filters</button>
 </div>
 
 <!-- Full-Width Responsive Server Table -->
@@ -104,10 +104,10 @@
                 data-kernel="{{ host.kernel|lower }}"
                 data-status="{{ host.status|lower }}">
                 
-                <!-- Hostname (Clean server icon, no green badge) -->
+                <!-- Hostname -->
                 <td>
                     <div class="table-host-cell">
-                        <span class="host-icon">&#x1F5A5;</span>
+                        <span class="host-icon"><i data-lucide="server" style="width:18px;height:18px;"></i></span>
                         <span class="host-name-text">{{ host.hostname }}</span>
                     </div>
                 </td>
@@ -124,7 +124,7 @@
                 <!-- Last Scan -->
                 <td style="font-size:0.88em;color:#4b5563;">{{ host.last_scan }}</td>
 
-                <!-- Reports (Clickable total count badge) -->
+                <!-- Reports -->
                 <td style="text-align:center;">
                     <a href="{{ url_for('report.history', hostname=host.dirname) }}" 
                        class="reports-count-badge" 
@@ -146,10 +146,10 @@
 
                 <!-- Actions -->
                 <td class="actions-cell" style="justify-content:center;">
-                    <a href="{{ url_for('report.view_latest', hostname=host.dirname) }}" class="btn btn-xs btn-primary">&#x1F441; View Report</a>
-                    <a href="{{ url_for('report.history', hostname=host.dirname) }}" class="btn btn-xs btn-secondary">&#x1F4C2; History</a>
+                    <a href="{{ url_for('report.view_latest', hostname=host.dirname) }}" class="btn btn-xs btn-primary"><i data-lucide="eye" style="width:14px;height:14px;"></i> View Report</a>
+                    <a href="{{ url_for('report.history', hostname=host.dirname) }}" class="btn btn-xs btn-secondary"><i data-lucide="folder-open" style="width:14px;height:14px;"></i> History</a>
                     {% if host.json_count >= 2 %}
-                    <a href="{{ url_for('compare.compare_page', hostname=host.dirname) }}" class="btn btn-xs btn-compare">&#x1F50D; Compare</a>
+                    <a href="{{ url_for('compare.compare_page', hostname=host.dirname) }}" class="btn btn-xs btn-compare"><i data-lucide="git-compare-arrows" style="width:14px;height:14px;"></i> Compare</a>
                     {% else %}
                     <span class="btn btn-xs btn-disabled" title="At least two reports are required for comparison">Compare</span>
                     {% endif %}
@@ -162,7 +162,7 @@
 </div>
 {% else %}
 <div class="empty-state">
-    <div class="empty-icon">&#x1F4E1;</div>
+    <div class="empty-icon"><i data-lucide="server" style="width:48px;height:48px;"></i></div>
     <h3>No Linux Health Reports Collected</h3>
     <p>Run <code>health_check.sh</code> on your target Linux servers to populate the infrastructure dashboard.</p>
 </div>

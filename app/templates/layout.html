@@ -5,18 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Enterprise Linux Health Dashboard{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
     {% block head %}{% endblock %}
 </head>
 <body>
     <nav class="top-nav">
         <div class="nav-content">
             <div class="nav-brand">
-                <a href="{{ url_for('dashboard.index') }}">&#x1F5A5; Enterprise Linux Health Dashboard</a>
+                <a href="{{ url_for('dashboard.index') }}"><i data-lucide="file-text" style="width:22px;height:22px;"></i> Enterprise Linux Health Dashboard</a>
             </div>
             <div class="nav-right">
                 {% if auth_enabled and user %}
                 <span class="nav-user">Welcome, <strong>{{ user }}</strong></span>
-                <a href="{{ url_for('auth.logout') }}" class="nav-link logout-btn">Logout</a>
+                <a href="{{ url_for('auth.logout') }}" class="nav-link logout-btn"><i data-lucide="log-out" style="width:16px;height:16px;vertical-align:middle;"></i> Logout</a>
                 {% endif %}
             </div>
         </div>
@@ -31,6 +32,11 @@
     </footer>
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            if (window.lucide) { lucide.createIcons(); }
+        });
+    </script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

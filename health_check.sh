@@ -238,6 +238,7 @@ HTMLHEADER
     <meta name="report-date" content="${report_date}">
     <meta name="report-status" content="COMPLETED">
     <title>Health Check - ${hostname_val} - ${report_date}</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
 HTMLMETA
 
     cat >> "$HTML_REPORT" << 'HTMLSTYLE'
@@ -491,11 +492,11 @@ HTMLSTYLE
     <nav class="top-nav">
         <div class="nav-content">
             <div class="nav-left">
-                <a href="/" class="btn-back-dashboard">&larr; Back to Dashboard</a>
+                <a href="/" class="btn-back-dashboard"><i data-lucide="arrow-left" style="width:16px;height:16px;vertical-align:middle;"></i> Back to Dashboard</a>
             </div>
             <div class="nav-center">
                 <div class="report-title-wrap">
-                    <span class="report-title-icon">&#x1F5A5;</span>
+                    <i data-lucide="file-text" style="width:24px;height:24px;color:#ffffff;"></i>
                     <h1 class="report-title-text">Linux Health Check Report</h1>
                 </div>
                 <div class="nav-meta-row">
@@ -514,37 +515,37 @@ HTMLSTYLE
     <div class="page-layout">
     <aside class="sidebar">
         <nav class="side-nav">
-            <div class="side-nav-title"><span class="side-title-icon">&#x2699;</span> SYSTEM</div>
-            <a href="#system-info">System Info</a>
-            <a href="#hardware">Hardware</a>
-            <a href="#kernel">Kernel</a>
-            <div class="side-nav-title"><span class="side-title-icon">&#x1F4BE;</span> STORAGE</div>
-            <a href="#disk">Disk Usage</a>
-            <a href="#lvm">LVM</a>
-            <a href="#filesystem">Filesystem</a>
-            <a href="#multipath">Multipath</a>
-            <div class="side-nav-title"><span class="side-title-icon">&#x1F9E0;</span> MEMORY</div>
-            <a href="#memory">Memory</a>
-            <a href="#performance">Performance</a>
-            <div class="side-nav-title"><span class="side-title-icon">&#x1F310;</span> NETWORK</div>
-            <a href="#network">Network</a>
-            <a href="#network-config">Network Config</a>
-            <a href="#bonding">Bond Status</a>
-            <a href="#routing">Routing</a>
-            <a href="#dns">DNS</a>
-            <a href="#ports">Listening Ports</a>
-            <div class="side-nav-title"><span class="side-title-icon">&#x1F6E1;</span> SECURITY</div>
-            <a href="#firewall">Firewall</a>
-            <a href="#selinux">SELinux</a>
-            <div class="side-nav-title"><span class="side-title-icon">&#x1F5A5;</span> SERVICES</div>
-            <a href="#ntp">NTP</a>
-            <a href="#services">Services</a>
-            <a href="#exports">NFS Exports</a>
-            <div class="side-nav-title"><span class="side-title-icon">&#x2699;</span> CONFIG & USERS</div>
-            <a href="#cron">Cron</a>
-            <a href="#sysctl">Sysctl</a>
-            <a href="#limits">Limits</a>
-            <a href="#users">Home Directory</a>
+            <div class="side-nav-title"><i data-lucide="settings-2" style="width:16px;height:16px;-webkit-text-fill-color:#C61D24;"></i> SYSTEM</div>
+            <a href="#system-info"><i data-lucide="monitor-smartphone" class="nav-item-icon"></i> System Info</a>
+            <a href="#hardware"><i data-lucide="cpu" class="nav-item-icon"></i> Hardware</a>
+            <a href="#kernel"><i data-lucide="code-xml" class="nav-item-icon"></i> Kernel</a>
+            <div class="side-nav-title"><i data-lucide="database" style="width:16px;height:16px;-webkit-text-fill-color:#C61D24;"></i> STORAGE</div>
+            <a href="#disk"><i data-lucide="hard-drive" class="nav-item-icon"></i> Disk Usage</a>
+            <a href="#lvm"><i data-lucide="layers-3" class="nav-item-icon"></i> LVM</a>
+            <a href="#filesystem"><i data-lucide="folder" class="nav-item-icon"></i> Filesystem</a>
+            <a href="#multipath"><i data-lucide="git-branch-plus" class="nav-item-icon"></i> Multipath</a>
+            <div class="side-nav-title"><i data-lucide="memory-stick" style="width:16px;height:16px;-webkit-text-fill-color:#C61D24;"></i> MEMORY</div>
+            <a href="#memory"><i data-lucide="memory-stick" class="nav-item-icon"></i> Memory</a>
+            <a href="#performance"><i data-lucide="activity" class="nav-item-icon"></i> Performance</a>
+            <div class="side-nav-title"><i data-lucide="globe" style="width:16px;height:16px;-webkit-text-fill-color:#C61D24;"></i> NETWORK</div>
+            <a href="#network"><i data-lucide="globe" class="nav-item-icon"></i> Network</a>
+            <a href="#network-config"><i data-lucide="settings-2" class="nav-item-icon"></i> Network Config</a>
+            <a href="#bonding"><i data-lucide="link-2" class="nav-item-icon"></i> Bond Status</a>
+            <a href="#routing"><i data-lucide="route" class="nav-item-icon"></i> Routing</a>
+            <a href="#dns"><i data-lucide="badge-info" class="nav-item-icon"></i> DNS</a>
+            <a href="#ports"><i data-lucide="plug-zap" class="nav-item-icon"></i> Listening Ports</a>
+            <div class="side-nav-title"><i data-lucide="shield" style="width:16px;height:16px;-webkit-text-fill-color:#C61D24;"></i> SECURITY</div>
+            <a href="#firewall"><i data-lucide="shield-check" class="nav-item-icon"></i> Firewall</a>
+            <a href="#selinux"><i data-lucide="shield-ellipsis" class="nav-item-icon"></i> SELinux</a>
+            <div class="side-nav-title"><i data-lucide="server" style="width:16px;height:16px;-webkit-text-fill-color:#C61D24;"></i> SERVICES</div>
+            <a href="#ntp"><i data-lucide="clock-3" class="nav-item-icon"></i> NTP</a>
+            <a href="#services"><i data-lucide="server" class="nav-item-icon"></i> Services</a>
+            <a href="#exports"><i data-lucide="folder-sync" class="nav-item-icon"></i> NFS Exports</a>
+            <div class="side-nav-title"><i data-lucide="settings" style="width:16px;height:16px;-webkit-text-fill-color:#C61D24;"></i> CONFIG & USERS</div>
+            <a href="#cron"><i data-lucide="calendar-clock" class="nav-item-icon"></i> Cron</a>
+            <a href="#sysctl"><i data-lucide="sliders-horizontal" class="nav-item-icon"></i> Sysctl</a>
+            <a href="#limits"><i data-lucide="gauge" class="nav-item-icon"></i> Limits</a>
+            <a href="#users"><i data-lucide="house" class="nav-item-icon"></i> Home Directory</a>
         </nav>
     </aside>
     <main class="main-content">
@@ -575,6 +576,7 @@ html_report_end() {
 
         // Smooth scroll positioning for sidebar links stopping 90px below fixed header
         document.addEventListener('DOMContentLoaded', function() {
+            if (window.lucide) { lucide.createIcons(); }
             var links = document.querySelectorAll('.side-nav a[href^="#"]');
             links.forEach(function(anchor) {
                 anchor.addEventListener('click', function(e) {
