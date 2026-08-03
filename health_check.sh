@@ -233,6 +233,7 @@ HTMLHEADER
     cat >> "$HTML_REPORT" << HTMLMETA
     <meta name="report-hostname" content="${hostname_val}">
     <meta name="report-os" content="${OS_FULL}">
+    <meta name="report-kernel" content="${kernel}">
     <meta name="report-ip" content="${ip_addr}">
     <meta name="report-date" content="${report_date}">
     <meta name="report-status" content="COMPLETED">
