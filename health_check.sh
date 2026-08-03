@@ -256,7 +256,7 @@ HTMLMETA
         html { scroll-behavior: smooth; }
 
         .top-nav {
-            background: linear-gradient(90deg, #B71C1C 0%, #8E1720 20%, #1E1E24 45%, #183A6D 75%, #2563EB 100%);
+            background: linear-gradient(90deg, #b71c1c 0%, #8e1720 30%, #1e1e24 75%, #111115 100%);
             color: #ffffff;
             min-height: 72px;
             padding: 10px 30px;
@@ -344,26 +344,26 @@ HTMLMETA
             padding: 15px 0;
         }
         .side-nav-title {
-            font-size: 0.7em;
-            font-weight: 700;
+            font-size: 0.72em;
+            font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 1.5px;
-            color: #999;
-            padding: 12px 20px 6px;
+            color: #d32f2f;
+            padding: 14px 20px 6px;
         }
         .side-nav a {
             display: block;
             padding: 8px 20px;
-            color: #555;
+            color: #4b5563;
             font-size: 0.85em;
             border-left: 3px solid transparent;
             transition: all 0.2s ease;
         }
         .side-nav a:hover, .side-nav a.active {
-            color: #4a6cf7;
-            background: #f0f3ff;
-            border-left-color: #4a6cf7;
-            font-weight: 600;
+            color: #d32f2f;
+            background: #fdf2f2;
+            border-left-color: #d32f2f;
+            font-weight: 700;
         }
 
         .main-content {
@@ -380,7 +380,7 @@ HTMLMETA
             background: #fff;
             padding: 14px 20px;
             border-radius: 10px 10px 0 0;
-            border-left: 5px solid #4a6cf7;
+            border-left: 5px solid #d32f2f;
             cursor: pointer;
             display: flex;
             justify-content: space-between;
@@ -388,7 +388,7 @@ HTMLMETA
             box-shadow: 0 1px 4px rgba(0,0,0,0.06);
             user-select: none;
         }
-        .section-header h3 { font-size: 1.05em; font-weight: 700; color: #2c3e50; }
+        .section-header h3 { font-size: 1.05em; font-weight: 700; color: #1e293b; }
         .header-right { display: flex; align-items: center; gap: 12px; }
         .toggle-icon { font-size: 0.9em; color: #999; transition: transform 0.3s; }
         .toggle-icon.collapsed { transform: rotate(-90deg); }
@@ -397,7 +397,7 @@ HTMLMETA
             padding: 20px;
             border-radius: 0 0 10px 10px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-            border-left: 5px solid #4a6cf7;
+            border-left: 5px solid #d32f2f;
             border-top: 1px solid #f0f0f0;
         }
         .section-body.hidden { display: none; }
