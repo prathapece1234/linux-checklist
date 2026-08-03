@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
 
-{% block title %}History - {{ hostname }} - Enterprise Linux Health Dashboard{% endblock %}
+{% block title %}Report History — {{ hostname }} — Enterprise Linux Health Dashboard{% endblock %}
 
 {% block content %}
 <div class="breadcrumb">
@@ -8,12 +8,14 @@
     <span class="breadcrumb-sep">&rsaquo;</span>
     <span>{{ hostname }}</span>
     <span class="breadcrumb-sep">&rsaquo;</span>
-    <span>History</span>
+    <span>Report History</span>
 </div>
 
-<div class="page-header">
-    <h2>&#x1F4C2; Report History — {{ hostname }}</h2>
-    <p class="page-subtitle">{{ reports|length }} reports available</p>
+<div class="page-header-row">
+    <div class="page-title">
+        <h2>Report History — {{ hostname }}</h2>
+        <p class="page-subtitle">{{ reports|length }} historical health reports collected for this host</p>
+    </div>
 </div>
 
 {% if reports %}
@@ -25,7 +27,8 @@
                 <th>Timestamp</th>
                 <th>Filename</th>
                 <th>Size</th>
-                <th>Actions</th>
+                <th>View Options</th>
+                <th>Download Options</th>
             </tr>
         </thead>
         <tbody>
@@ -36,8 +39,13 @@
                 <td class="mono">{{ report.filename }}</td>
                 <td>{{ report.size_kb }} KB</td>
                 <td class="actions-cell">
-                    <a href="{{ url_for('report.view_report', hostname=hostname, filename=report.filename) }}" class="btn btn-xs btn-primary">Open</a>
-                    <a href="{{ url_for('report.download_report', hostname=hostname, filename=report.filename) }}" class="btn btn-xs btn-secondary">Download</a>
+                    <a href="{{ url_for('report.view_report', hostname=hostname, filename=report.filename) }}" class="btn btn-xs btn-primary">&#x1F441; View HTML</a>
+                    <a href="{{ url_for('report.view_raw_txt', hostname=hostname, filename=report.filename) }}" class="btn btn-xs btn-secondary">&#x1F4C4; View Raw TXT</a>
+                    <a href="{{ url_for('report.view_raw_json', hostname=hostname, filename=report.filename) }}" class="btn btn-xs btn-secondary">&#x1F4D1; View JSON</a>
+                </td>
+                <td class="actions-cell">
+                    <a href="{{ url_for('report.download_report', hostname=hostname, filename=report.filename) }}" class="btn btn-xs btn-secondary">&#x2B07; HTML</a>
+                    <a href="{{ url_for('report.download_report', hostname=hostname, filename=report.filename|replace('.html', '.txt')) }}" class="btn btn-xs btn-secondary">&#x2B07; TXT</a>
                 </td>
             </tr>
             {% endfor %}
@@ -52,6 +60,6 @@
 {% endif %}
 
 <div class="back-link">
-    <a href="{{ url_for('dashboard.index') }}" class="btn btn-sm btn-primary">&#x2190; Back to Dashboard</a>
+    <a href="{{ url_for('dashboard.index') }}" class="btn btn-sm btn-primary">&larr; Back to Dashboard</a>
 </div>
 {% endblock %}

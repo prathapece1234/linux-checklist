@@ -9,7 +9,7 @@ import json
 import logging
 from datetime import datetime
 
-from flask import Blueprint, render_template, request, jsonify, abort, session
+from flask import Blueprint, render_template, request, jsonify, abort, session, redirect, url_for
 
 from app.config import Config
 
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 # =============================================================================
-# JSON LOADING
+# JSON LOADING & REPORT DISCOVERY
 # =============================================================================
 
 def load_json(filepath):
@@ -52,11 +52,10 @@ def get_json_reports(hostname):
 
 
 # =============================================================================
-# STATUS EVALUATION RULES
+# COMPARISON ENGINE
 # =============================================================================
 
 def eval_filesystem_status(usage_pct):
-    """Filesystem: <80%=PASS, 80-89%=WARNING, >=90%=FAIL."""
     try:
         pct = float(str(usage_pct).replace("%", ""))
     except (ValueError, TypeError):
@@ -69,7 +68,6 @@ def eval_filesystem_status(usage_pct):
 
 
 def eval_memory_status(usage_pct):
-    """Memory: <80%=PASS, 80-89%=WARNING, >=90%=FAIL."""
     try:
         pct = float(str(usage_pct).replace("%", ""))
     except (ValueError, TypeError):
@@ -82,7 +80,6 @@ def eval_memory_status(usage_pct):
 
 
 def eval_swap_status(usage_pct):
-    """Swap: <20%=PASS, 20-49%=WARNING, >=50%=FAIL."""
     try:
         pct = float(str(usage_pct).replace("%", ""))
     except (ValueError, TypeError):
@@ -94,89 +91,53 @@ def eval_swap_status(usage_pct):
     return "FAIL"
 
 
-def eval_service_status(state):
-    """Service: Running=PASS, Stopped=FAIL."""
-    if not state:
-        return "INFO"
-    s = str(state).upper()
-    if s in ("RUNNING", "ACTIVE"):
-        return "PASS"
-    elif s in ("NOT_INSTALLED",):
-        return "INFO"
-    return "FAIL"
+def eval_service_status(old_state, new_state):
+    s_new = str(new_state).upper() if new_state else "UNKNOWN"
+    s_old = str(old_state).upper() if old_state else "UNKNOWN"
 
+    if s_old == "STOPPED" and s_new in ("RUNNING", "ACTIVE"):
+        return "RESTARTED"
+    elif s_new in ("RUNNING", "ACTIVE"):
+        return "RUNNING"
+    elif s_new == "STOPPED":
+        return "STOPPED"
+    elif s_new == "NOT_INSTALLED":
+        return "REMOVED"
+    return "CHANGED" if s_old != s_new else "NO_CHANGE"
 
-def eval_selinux_status(state):
-    """SELinux: Enforcing=PASS, Permissive=WARNING, Disabled=FAIL."""
-    if not state:
-        return "INFO"
-    s = str(state).lower()
-    if "enforcing" in s:
-        return "PASS"
-    elif "permissive" in s:
-        return "WARNING"
-    return "FAIL"
-
-
-def eval_ntp_status(state):
-    """NTP: Synchronized=PASS, Not synchronized=FAIL."""
-    if not state:
-        return "INFO"
-    s = str(state).lower()
-    if "synchronized" in s and "not" not in s:
-        return "PASS"
-    return "FAIL"
-
-
-def eval_change_status(old_val, new_val, category="generic"):
-    """Evaluate whether a value change is PASS, INFO, or WARNING."""
-    if str(old_val) == str(new_val):
-        return "PASS"
-    if category in ("kernel", "os", "cpu", "ram", "ip"):
-        return "INFO"
-    if category == "routes":
-        return "WARNING"
-    return "INFO"
-
-
-# =============================================================================
-# COMPARISON FUNCTIONS
-# =============================================================================
 
 def compare_system(old, new):
-    """Compare system-level fields."""
     results = []
     sys_old = old.get("system", {})
     sys_new = new.get("system", {})
 
     fields = [
-        ("Hostname", "hostname", "generic"),
-        ("FQDN", "fqdn", "generic"),
-        ("Operating System", "os", "os"),
-        ("Kernel", "kernel", "kernel"),
-        ("CPU Cores", "cpu_cores", "cpu"),
-        ("RAM Total", "ram_total", "ram"),
-        ("Uptime", "uptime", "generic"),
+        ("Hostname", "hostname"),
+        ("FQDN", "fqdn"),
+        ("Operating System", "os"),
+        ("Kernel Version", "kernel"),
+        ("CPU Cores", "cpu_cores"),
+        ("Total Memory", "ram_total"),
+        ("System Uptime", "uptime"),
     ]
 
-    for label, key, category in fields:
-        old_val = sys_old.get(key, "N/A")
-        new_val = sys_new.get(key, "N/A")
-        diff = "No Change" if str(old_val) == str(new_val) else "Changed"
-        status = eval_change_status(old_val, new_val, category)
+    for label, key in fields:
+        old_val = str(sys_old.get(key, "N/A"))
+        new_val = str(sys_new.get(key, "N/A"))
+        changed = old_val != new_val
         results.append({
             "item": label,
-            "previous": str(old_val),
-            "current": str(new_val),
-            "difference": diff,
-            "status": status,
+            "previous": old_val,
+            "current": new_val,
+            "difference": f"{old_val} → {new_val}" if changed else "No Change",
+            "status": "CHANGED" if changed else "NO_CHANGE",
+            "type": "text",
         })
 
     return results
 
 
 def compare_storage(old, new):
-    """Compare filesystem usage and mount points."""
     results = []
 
     fs_old = {item["mount"]: item for item in old.get("storage", {}).get("filesystems", [])}
@@ -188,72 +149,98 @@ def compare_storage(old, new):
         old_entry = fs_old.get(mount, {})
         new_entry = fs_new.get(mount, {})
 
-        old_use = old_entry.get("use_pct", "N/A")
-        new_use = new_entry.get("use_pct", "N/A")
+        old_use = old_entry.get("use_pct", "0%")
+        new_use = new_entry.get("use_pct", "0%")
+
+        try:
+            old_num = float(str(old_use).replace("%", ""))
+        except Exception:
+            old_num = 0
+
+        try:
+            new_num = float(str(new_use).replace("%", ""))
+        except Exception:
+            new_num = 0
 
         if mount not in fs_old:
-            diff = "NEW mount point"
-            status = "INFO"
+            status = "NEW"
+            diff = "New mount point added"
         elif mount not in fs_new:
-            diff = "MISSING mount point"
-            status = "FAIL"
-        elif str(old_use) == str(new_use):
-            diff = "No Change"
+            status = "REMOVED"
+            diff = "Mount point removed"
+        elif old_use != new_use:
             status = eval_filesystem_status(new_use)
-        else:
             diff = f"{old_use} → {new_use}"
-            status = eval_filesystem_status(new_use)
-
-        old_detail = f"{old_entry.get('filesystem', 'N/A')} {old_entry.get('size', '')} Used:{old_use}" if old_entry else "N/A"
-        new_detail = f"{new_entry.get('filesystem', 'N/A')} {new_entry.get('size', '')} Used:{new_use}" if new_entry else "N/A"
+        else:
+            status = "NO_CHANGE"
+            diff = "No Change"
 
         results.append({
             "item": f"Mount: {mount}",
-            "previous": old_detail,
-            "current": new_detail,
+            "previous": f"{old_entry.get('size', 'N/A')} (Used: {old_use})",
+            "current": f"{new_entry.get('size', 'N/A')} (Used: {new_use})",
+            "prev_pct": old_num,
+            "curr_pct": new_num,
             "difference": diff,
             "status": status,
+            "type": "progress",
         })
 
     return results
 
 
 def compare_memory(old, new):
-    """Compare RAM and swap usage."""
     results = []
 
     mem_old = old.get("memory", {})
     mem_new = new.get("memory", {})
 
     # RAM
-    old_ram = mem_old.get("ram_used_pct", "N/A")
-    new_ram = mem_new.get("ram_used_pct", "N/A")
-    diff = "No Change" if str(old_ram) == str(new_ram) else f"{old_ram} → {new_ram}"
+    old_ram_pct = mem_old.get("ram_used_pct", "0%")
+    new_ram_pct = mem_new.get("ram_used_pct", "0%")
+    try:
+        ram_prev_num = float(str(old_ram_pct).replace("%", ""))
+        ram_curr_num = float(str(new_ram_pct).replace("%", ""))
+    except Exception:
+        ram_prev_num = ram_curr_num = 0
+
+    ram_changed = old_ram_pct != new_ram_pct
     results.append({
         "item": "RAM Usage",
-        "previous": f"{mem_old.get('ram_used', 'N/A')} / {mem_old.get('ram_total', 'N/A')} ({old_ram})",
-        "current": f"{mem_new.get('ram_used', 'N/A')} / {mem_new.get('ram_total', 'N/A')} ({new_ram})",
-        "difference": diff,
-        "status": eval_memory_status(new_ram),
+        "previous": f"{mem_old.get('ram_used', 'N/A')} / {mem_old.get('ram_total', 'N/A')} ({old_ram_pct})",
+        "current": f"{mem_new.get('ram_used', 'N/A')} / {mem_new.get('ram_total', 'N/A')} ({new_ram_pct})",
+        "prev_pct": ram_prev_num,
+        "curr_pct": ram_curr_num,
+        "difference": f"{old_ram_pct} → {new_ram_pct}" if ram_changed else "No Change",
+        "status": eval_memory_status(new_ram_pct),
+        "type": "progress",
     })
 
     # Swap
-    old_swap = mem_old.get("swap_used_pct", "N/A")
-    new_swap = mem_new.get("swap_used_pct", "N/A")
-    diff = "No Change" if str(old_swap) == str(new_swap) else f"{old_swap} → {new_swap}"
+    old_swap_pct = mem_old.get("swap_used_pct", "0%")
+    new_swap_pct = mem_new.get("swap_used_pct", "0%")
+    try:
+        swap_prev_num = float(str(old_swap_pct).replace("%", ""))
+        swap_curr_num = float(str(new_swap_pct).replace("%", ""))
+    except Exception:
+        swap_prev_num = swap_curr_num = 0
+
+    swap_changed = old_swap_pct != new_swap_pct
     results.append({
         "item": "Swap Usage",
-        "previous": f"{mem_old.get('swap_used', 'N/A')} / {mem_old.get('swap_total', 'N/A')} ({old_swap})",
-        "current": f"{mem_new.get('swap_used', 'N/A')} / {mem_new.get('swap_total', 'N/A')} ({new_swap})",
-        "difference": diff,
-        "status": eval_swap_status(new_swap),
+        "previous": f"{mem_old.get('swap_used', 'N/A')} / {mem_old.get('swap_total', 'N/A')} ({old_swap_pct})",
+        "current": f"{mem_new.get('swap_used', 'N/A')} / {mem_new.get('swap_total', 'N/A')} ({new_swap_pct})",
+        "prev_pct": swap_prev_num,
+        "curr_pct": swap_curr_num,
+        "difference": f"{old_swap_pct} → {new_swap_pct}" if swap_changed else "No Change",
+        "status": eval_swap_status(new_swap_pct),
+        "type": "progress",
     })
 
     return results
 
 
 def compare_services(old, new):
-    """Compare key service states."""
     results = []
 
     svc_old = old.get("services", {})
@@ -264,20 +251,22 @@ def compare_services(old, new):
     for svc in all_services:
         old_state = svc_old.get(svc, "N/A")
         new_state = svc_new.get(svc, "N/A")
-        diff = "No Change" if str(old_state) == str(new_state) else f"{old_state} → {new_state}"
+        changed = str(old_state) != str(new_state)
+        status = eval_service_status(old_state, new_state)
+
         results.append({
-            "item": svc,
+            "item": f"Service: {svc}",
             "previous": str(old_state),
             "current": str(new_state),
-            "difference": diff,
-            "status": eval_service_status(new_state),
+            "difference": f"{old_state} → {new_state}" if changed else "No Change",
+            "status": status,
+            "type": "service",
         })
 
     return results
 
 
 def compare_network(old, new):
-    """Compare IP addresses and routes."""
     results = []
 
     net_old = old.get("network", {})
@@ -286,15 +275,16 @@ def compare_network(old, new):
     # IP Addresses
     old_ips = net_old.get("ip_addresses", [])
     new_ips = net_new.get("ip_addresses", [])
-    old_ips_str = "\n".join(old_ips) if isinstance(old_ips, list) else str(old_ips)
-    new_ips_str = "\n".join(new_ips) if isinstance(new_ips, list) else str(new_ips)
-    diff = "No Change" if old_ips_str == new_ips_str else "Changed"
+    old_ips_str = ", ".join(old_ips) if isinstance(old_ips, list) else str(old_ips)
+    new_ips_str = ", ".join(new_ips) if isinstance(new_ips, list) else str(new_ips)
+    ip_changed = old_ips_str != new_ips_str
     results.append({
         "item": "IP Addresses",
         "previous": old_ips_str or "N/A",
         "current": new_ips_str or "N/A",
-        "difference": diff,
-        "status": eval_change_status(old_ips_str, new_ips_str, "ip"),
+        "difference": "Changed" if ip_changed else "No Change",
+        "status": "CHANGED" if ip_changed else "NO_CHANGE",
+        "type": "text",
     })
 
     # Routes
@@ -302,34 +292,34 @@ def compare_network(old, new):
     new_routes = net_new.get("routes", [])
     old_routes_str = "\n".join(old_routes) if isinstance(old_routes, list) else str(old_routes)
     new_routes_str = "\n".join(new_routes) if isinstance(new_routes, list) else str(new_routes)
-    diff = "No Change" if old_routes_str == new_routes_str else "Changed"
+    route_changed = old_routes_str != new_routes_str
 
-    # Check for missing persist routes
-    if old_routes_str != new_routes_str:
+    diff_desc = "No Change"
+    if route_changed:
         old_set = set(old_routes) if isinstance(old_routes, list) else set()
         new_set = set(new_routes) if isinstance(new_routes, list) else set()
-        missing = old_set - new_set
+        removed = old_set - new_set
         added = new_set - old_set
-        details = []
-        if missing:
-            details.append(f"Removed: {', '.join(missing)}")
+        desc_parts = []
+        if removed:
+            desc_parts.append(f"Removed routes: {', '.join(removed)}")
         if added:
-            details.append(f"Added: {', '.join(added)}")
-        diff = "; ".join(details) if details else "Changed"
+            desc_parts.append(f"Added routes: {', '.join(added)}")
+        diff_desc = "; ".join(desc_parts) if desc_parts else "Routing table changed"
 
     results.append({
-        "item": "Routes (route -n / ip route)",
+        "item": "Network Routes (route -n)",
         "previous": old_routes_str or "N/A",
         "current": new_routes_str or "N/A",
-        "difference": diff,
-        "status": eval_change_status(old_routes_str, new_routes_str, "routes"),
+        "difference": diff_desc,
+        "status": "WARNING" if route_changed else "NO_CHANGE",
+        "type": "text",
     })
 
     return results
 
 
 def compare_security(old, new):
-    """Compare SELinux and NTP status."""
     results = []
 
     sec_old = old.get("security", {})
@@ -338,54 +328,58 @@ def compare_security(old, new):
     # SELinux
     old_se = sec_old.get("selinux", "N/A")
     new_se = sec_new.get("selinux", "N/A")
-    diff = "No Change" if str(old_se) == str(new_se) else f"{old_se} → {new_se}"
+    se_changed = str(old_se) != str(new_se)
     results.append({
-        "item": "SELinux",
+        "item": "SELinux Mode",
         "previous": str(old_se),
         "current": str(new_se),
-        "difference": diff,
-        "status": eval_selinux_status(new_se),
+        "difference": f"{old_se} → {new_se}" if se_changed else "No Change",
+        "status": "CHANGED" if se_changed else "NO_CHANGE",
+        "type": "text",
     })
 
     # NTP
     old_ntp = sec_old.get("ntp", "N/A")
     new_ntp = sec_new.get("ntp", "N/A")
-    diff = "No Change" if str(old_ntp) == str(new_ntp) else f"{old_ntp} → {new_ntp}"
+    ntp_changed = str(old_ntp) != str(new_ntp)
     results.append({
         "item": "NTP Synchronization",
         "previous": str(old_ntp),
         "current": str(new_ntp),
-        "difference": diff,
-        "status": eval_ntp_status(new_ntp),
+        "difference": f"{old_ntp} → {new_ntp}" if ntp_changed else "No Change",
+        "status": "CHANGED" if ntp_changed else "NO_CHANGE",
+        "type": "text",
     })
 
     return results
 
 
 def generate_summary(categories):
-    """Count PASS/WARNING/FAIL/INFO across all categories."""
-    counts = {"PASS": 0, "WARNING": 0, "FAIL": 0, "INFO": 0, "total": 0}
+    counts = {"PASS": 0, "WARNING": 0, "FAIL": 0, "NO_CHANGE": 0, "CHANGED": 0, "total": 0}
 
     for cat_results in categories.values():
         for item in cat_results:
-            status = item.get("status", "INFO")
-            counts[status] = counts.get(status, 0) + 1
+            st = item.get("status", "NO_CHANGE")
+            if st in ("PASS", "RUNNING", "HEALTHY"):
+                counts["PASS"] += 1
+            elif st in ("WARNING", "CHANGED", "RESTARTED", "NEW"):
+                counts["WARNING"] += 1
+            elif st in ("FAIL", "STOPPED", "REMOVED", "DANGER"):
+                counts["FAIL"] += 1
+            else:
+                counts["NO_CHANGE"] += 1
+
+            if st != "NO_CHANGE":
+                counts["CHANGED"] += 1
+
             counts["total"] += 1
 
-    # Overall health
     if counts["FAIL"] > 0:
         counts["overall"] = "FAIL"
     elif counts["WARNING"] > 0:
         counts["overall"] = "WARNING"
     else:
         counts["overall"] = "PASS"
-
-    # Changes detected
-    counts["changes"] = sum(
-        1 for cat_results in categories.values()
-        for item in cat_results
-        if item.get("difference", "") != "No Change"
-    )
 
     return counts
 
@@ -394,54 +388,51 @@ def generate_summary(categories):
 # ROUTES
 # =============================================================================
 
-@compare_bp.route("/compare/<hostname>")
+@compare_bp.route("/compare/<hostname>", methods=["GET", "POST"])
+@compare_bp.route("/compare/<hostname>/run", methods=["GET", "POST"])
 def compare_page(hostname):
-    """Show the comparison page with report selectors."""
+    """Unified route handling comparison GET and POST. Never returns blank page."""
     reports = get_json_reports(hostname)
 
-    return render_template(
-        "compare.html",
-        hostname=hostname,
-        json_reports=reports,
-        results=None,
-        summary=None,
-        user=session.get("user"),
-        auth_enabled=Config.AUTH_ENABLED,
-    )
+    report_old = request.form.get("report_old") or request.args.get("report_old")
+    report_new = request.form.get("report_new") or request.args.get("report_new")
 
+    # Default to latest and 2nd latest if not selected
+    if len(reports) >= 2:
+        if not report_new:
+            report_new = reports[0]["filename"]
+        if not report_old:
+            report_old = reports[1]["filename"]
 
-@compare_bp.route("/compare/<hostname>/run", methods=["POST"])
-def run_comparison(hostname):
-    """Execute comparison between two selected JSON reports."""
-    report_old = request.form.get("report_old", "")
-    report_new = request.form.get("report_new", "")
+    categories = None
+    summary = None
+    error_msg = None
 
-    host_dir = os.path.join(Config.WEB_ROOT, hostname)
-    old_path = os.path.join(host_dir, report_old)
-    new_path = os.path.join(host_dir, report_new)
+    if len(reports) < 2:
+        error_msg = "At least two JSON health reports are required to perform a Before vs After activity comparison."
+    elif report_old and report_new:
+        host_dir = os.path.join(Config.WEB_ROOT, hostname)
+        old_path = os.path.join(host_dir, report_old)
+        new_path = os.path.join(host_dir, report_new)
 
-    if not os.path.isfile(old_path) or not os.path.isfile(new_path):
-        abort(400)
+        if os.path.isfile(old_path) and os.path.isfile(new_path):
+            old_data = load_json(old_path)
+            new_data = load_json(new_path)
 
-    old_data = load_json(old_path)
-    new_data = load_json(new_path)
-
-    if old_data is None or new_data is None:
-        abort(500)
-
-    # Run all comparisons
-    categories = {
-        "System": compare_system(old_data, new_data),
-        "Storage": compare_storage(old_data, new_data),
-        "Memory": compare_memory(old_data, new_data),
-        "Services": compare_services(old_data, new_data),
-        "Network": compare_network(old_data, new_data),
-        "Security": compare_security(old_data, new_data),
-    }
-
-    summary = generate_summary(categories)
-
-    reports = get_json_reports(hostname)
+            if old_data and new_data:
+                categories = {
+                    "System Information": compare_system(old_data, new_data),
+                    "Storage & Mount Points": compare_storage(old_data, new_data),
+                    "Memory & Swap Usage": compare_memory(old_data, new_data),
+                    "Key Services": compare_services(old_data, new_data),
+                    "Network & Routes": compare_network(old_data, new_data),
+                    "Security & NTP": compare_security(old_data, new_data),
+                }
+                summary = generate_summary(categories)
+            else:
+                error_msg = "Failed to parse one or both JSON report files."
+        else:
+            error_msg = "Selected report files do not exist."
 
     return render_template(
         "compare.html",
@@ -451,13 +442,7 @@ def run_comparison(hostname):
         summary=summary,
         report_old=report_old,
         report_new=report_new,
+        error_msg=error_msg,
         user=session.get("user"),
         auth_enabled=Config.AUTH_ENABLED,
     )
-
-
-@compare_bp.route("/api/json-reports/<hostname>")
-def api_json_reports(hostname):
-    """API endpoint returning available JSON reports for a host."""
-    reports = get_json_reports(hostname)
-    return jsonify({"hostname": hostname, "reports": reports})

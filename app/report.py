@@ -22,7 +22,6 @@ def view_latest(hostname):
     if not os.path.isdir(host_dir):
         abort(404)
 
-    # Find latest HTML report
     reports = sorted(
         [f for f in os.listdir(host_dir)
          if f.startswith("HealthCheck_") and f.endswith(".html") and f != "latest.html"],
@@ -45,6 +44,69 @@ def view_report(hostname, filename):
         abort(404)
 
     return send_from_directory(host_dir, filename)
+
+
+@report_bp.route("/raw-txt/<hostname>/<filename>")
+def view_raw_txt(hostname, filename):
+    """View raw TXT report output inside formatted <pre> block."""
+    host_dir = os.path.join(Config.WEB_ROOT, hostname)
+    # Ensure filename ends with .txt
+    txt_filename = os.path.splitext(filename)[0] + ".txt"
+    filepath = os.path.join(host_dir, txt_filename)
+
+    if not os.path.isfile(filepath):
+        abort(404)
+
+    try:
+        with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+            content = f.read()
+    except Exception as e:
+        logger.error("Failed to read TXT report %s: %s", filepath, e)
+        abort(500)
+
+    size_kb = round(os.path.getsize(filepath) / 1024, 1)
+
+    return render_template(
+        "raw_view.html",
+        title="Raw TXT Health Report",
+        hostname=hostname,
+        filename=txt_filename,
+        content=content,
+        size_kb=size_kb,
+        user=session.get("user"),
+        auth_enabled=Config.AUTH_ENABLED,
+    )
+
+
+@report_bp.route("/raw-json/<hostname>/<filename>")
+def view_raw_json(hostname, filename):
+    """View raw JSON summary report output inside formatted <pre> block."""
+    host_dir = os.path.join(Config.WEB_ROOT, hostname)
+    json_filename = os.path.splitext(filename)[0] + ".json"
+    filepath = os.path.join(host_dir, json_filename)
+
+    if not os.path.isfile(filepath):
+        abort(404)
+
+    try:
+        with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+            content = f.read()
+    except Exception as e:
+        logger.error("Failed to read JSON report %s: %s", filepath, e)
+        abort(500)
+
+    size_kb = round(os.path.getsize(filepath) / 1024, 1)
+
+    return render_template(
+        "raw_view.html",
+        title="Raw JSON Summary Report",
+        hostname=hostname,
+        filename=json_filename,
+        content=content,
+        size_kb=size_kb,
+        user=session.get("user"),
+        auth_enabled=Config.AUTH_ENABLED,
+    )
 
 
 @report_bp.route("/history/<hostname>")

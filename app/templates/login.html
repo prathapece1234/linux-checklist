@@ -6,44 +6,115 @@
     <title>Login - Enterprise Linux Health Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-<body class="login-body">
-    <div class="login-wrapper">
-        <div class="login-card">
-            <div class="login-header">
-                <div class="login-icon">&#x1F5A5;</div>
-                <h1>Enterprise Linux Health Dashboard</h1>
-                <p class="login-subtitle">Production Monitoring System</p>
+<body class="login-page-body">
+    <div class="login-split-container">
+
+        <!-- LEFT SIDE (55%) -->
+        <div class="login-left-side">
+            <div class="left-top-content">
+                <!-- Linux Logo Placeholder Image -->
+                <div class="left-brand-header">
+                    <div class="left-logo-icon">
+                        <!-- Linux Tux SVG Placeholder -->
+                        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
+                            <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                            <line x1="9" y1="9" x2="9.01" y2="9"/>
+                            <line x1="15" y1="9" x2="15.01" y2="9"/>
+                        </svg>
+                    </div>
+                    <div class="left-brand-title">
+                        <h1>Enterprise Linux Health Dashboard</h1>
+                        <p>Centralized Linux Infrastructure Monitoring Platform</p>
+                    </div>
+                </div>
+
+                <!-- Feature Cards -->
+                <div class="features-list">
+                    <div class="feature-card">
+                        <div class="feature-card-header">
+                            <span class="feature-icon">&#x2713;</span>
+                            <span>Automated Health Checklist Collection</span>
+                        </div>
+                        <p>Automatically collect Linux health reports from multiple production servers into a single dashboard.</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="feature-card-header">
+                            <span class="feature-icon">&#x2713;</span>
+                            <span>Before & After Report Comparison</span>
+                        </div>
+                        <p>Instantly compare health reports before and after maintenance, patching, upgrades, or configuration changes.</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="feature-card-header">
+                            <span class="feature-icon">&#x2713;</span>
+                            <span>Centralized Infrastructure Dashboard</span>
+                        </div>
+                        <p>View storage, memory, key services, networking, and security health across all servers from one place.</p>
+                    </div>
+                </div>
             </div>
 
-            {% if error %}
-            <div class="alert alert-error">
-                <span>&#x26A0;</span> {{ error }}
+            <div class="left-footer-text">
+                Designed for Linux System Administrators, DevOps Engineers, and Infrastructure Teams.
             </div>
-            {% endif %}
-
-            {% if timeout %}
-            <div class="alert alert-warning">
-                <span>&#x23F0;</span> Session expired. Please log in again.
-            </div>
-            {% endif %}
-
-            <form method="POST" action="{{ url_for('auth.login') }}" class="login-form">
-                <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" name="username" placeholder="Enter your username" required autofocus autocomplete="username">
-                </div>
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" name="password" placeholder="Enter your password" required autocomplete="current-password">
-                </div>
-                <div class="form-group checkbox-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" name="remember_me"> Remember Me
-                    </label>
-                </div>
-                <button type="submit" class="btn btn-primary btn-full">Login</button>
-            </form>
         </div>
+
+        <!-- RIGHT SIDE (45%) -->
+        <div class="login-right-side">
+            <div class="login-card-container">
+
+                <div class="login-card-header">
+                    <div class="login-card-icon">
+                        <!-- Linux Server Icon -->
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
+                            <rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
+                            <line x1="6" y1="6" x2="6.01" y2="6"/>
+                            <line x1="6" y1="18" x2="6.01" y2="18"/>
+                        </svg>
+                    </div>
+                    <h2>Enterprise Linux Health Dashboard</h2>
+                    <p>Secure Login</p>
+                </div>
+
+                {% if error %}
+                <div class="alert-box alert-danger-red">
+                    <span>&#x26A0;</span> {{ error }}
+                </div>
+                {% endif %}
+
+                {% if timeout %}
+                <div class="alert-box alert-warning-yellow">
+                    <span>&#x23F0;</span> Session expired. Please log in again.
+                </div>
+                {% endif %}
+
+                <form method="POST" action="{{ url_for('auth.login') }}">
+                    <div class="login-form-group">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" name="username" placeholder="Enter username" required autofocus autocomplete="username">
+                    </div>
+
+                    <div class="login-form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" placeholder="Enter password" required autocomplete="current-password">
+                    </div>
+
+                    <div class="login-checkbox-group">
+                        <label class="login-checkbox-label">
+                            <input type="checkbox" name="remember_me"> Remember Me
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn-login">Login</button>
+                </form>
+
+            </div>
+        </div>
+
     </div>
 </body>
 </html>

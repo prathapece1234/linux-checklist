@@ -1,0 +1,28 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ title }} — {{ hostname }} — Enterprise Linux Health Dashboard{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+    <a href="{{ url_for('dashboard.index') }}">Dashboard</a>
+    <span class="breadcrumb-sep">&rsaquo;</span>
+    <a href="{{ url_for('report.history', hostname=hostname) }}">{{ hostname }}</a>
+    <span class="breadcrumb-sep">&rsaquo;</span>
+    <span>{{ title }}</span>
+</div>
+
+<div class="report-page-header">
+    <div class="report-header-top">
+        <a href="{{ url_for('report.history', hostname=hostname) }}" class="btn btn-sm btn-secondary">&larr; Back to History</a>
+        <h2 class="report-page-title">{{ title }}</h2>
+        <a href="{{ url_for('report.download_report', hostname=hostname, filename=filename) }}" class="btn btn-sm btn-primary">&#x2B07; Download File</a>
+    </div>
+    <div class="report-info-bar">
+        <div class="report-info-item"><strong>Host:</strong> {{ hostname }}</div>
+        <div class="report-info-item"><strong>File:</strong> {{ filename }}</div>
+        <div class="report-info-item"><strong>Size:</strong> {{ size_kb }} KB</div>
+    </div>
+</div>
+
+<pre class="raw-txt-block">{{ content }}</pre>
+{% endblock %}

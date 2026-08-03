@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
 
-{% block title %}Compare - {{ hostname }} - Enterprise Linux Health Dashboard{% endblock %}
+{% block title %}Compare Reports — {{ hostname }} — Enterprise Linux Health Dashboard{% endblock %}
 
 {% block content %}
 <div class="breadcrumb">
@@ -8,36 +8,42 @@
     <span class="breadcrumb-sep">&rsaquo;</span>
     <a href="{{ url_for('report.history', hostname=hostname) }}">{{ hostname }}</a>
     <span class="breadcrumb-sep">&rsaquo;</span>
-    <span>Compare Reports</span>
+    <span>Report Comparison</span>
 </div>
 
-<div class="page-header">
-    <h2>&#x1F50D; Compare Reports — {{ hostname }}</h2>
-    <p class="page-subtitle">Select two JSON reports to compare before and after activity</p>
+<div class="page-header-row">
+    <div class="page-title">
+        <h2>Before vs After Activity Report Comparison</h2>
+        <p class="page-subtitle">Host: <strong>{{ hostname }}</strong> &middot; Compare infrastructure metrics before and after maintenance, patching, or configuration changes</p>
+    </div>
 </div>
 
-<!-- Report Selector Form -->
+{% if error_msg %}
+<div class="alert-box alert-warning-yellow">
+    <span>&#x26A0;</span> {{ error_msg }}
+</div>
+{% endif %}
+
+<!-- Selector Form -->
 <div class="compare-selector">
-    <form method="POST" action="{{ url_for('compare.run_comparison', hostname=hostname) }}" class="compare-form">
+    <form method="POST" action="{{ url_for('compare.compare_page', hostname=hostname) }}" class="compare-form">
         <div class="selector-row">
             <div class="selector-group">
                 <label for="report_old">Previous Report (Before Activity)</label>
                 <select name="report_old" id="report_old" required>
-                    <option value="">-- Select Previous Report --</option>
                     {% for r in json_reports %}
-                    <option value="{{ r.filename }}" {% if report_old is defined and report_old == r.filename %}selected{% endif %}>
+                    <option value="{{ r.filename }}" {% if report_old == r.filename %}selected{% endif %}>
                         {{ r.mtime_str }} — {{ r.filename }}
                     </option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="selector-arrow">&#x27A1;</div>
+            <div class="selector-arrow">&rarr;</div>
             <div class="selector-group">
                 <label for="report_new">Current Report (After Activity)</label>
                 <select name="report_new" id="report_new" required>
-                    <option value="">-- Select Current Report --</option>
                     {% for r in json_reports %}
-                    <option value="{{ r.filename }}" {% if report_new is defined and report_new == r.filename %}selected{% endif %}>
+                    <option value="{{ r.filename }}" {% if report_new == r.filename %}selected{% endif %}>
                         {{ r.mtime_str }} — {{ r.filename }}
                     </option>
                     {% endfor %}
@@ -45,28 +51,36 @@
             </div>
         </div>
         <div class="selector-actions">
-            <button type="submit" class="btn btn-primary">&#x1F50D; Compare Reports</button>
+            {% if json_reports|length >= 2 %}
+            <button type="submit" class="btn btn-compare">&#x1F50D; Compare Reports</button>
+            {% else %}
+            <button type="button" class="btn btn-disabled" disabled>At least two reports are required for comparison</button>
+            {% endif %}
         </div>
     </form>
 </div>
 
-{% if results %}
-<!-- Comparison Summary -->
-<div class="compare-summary">
-    <div class="summary-header">
-        <h3>Comparison Summary</h3>
-    </div>
-    <div class="summary-cards">
-        <div class="summary-card">
-            <div class="summary-label">Previous Report</div>
-            <div class="summary-value mono">{{ report_old }}</div>
+{% if summary and results %}
+<!-- Comparison Meta Card -->
+<div class="compare-meta-card">
+    <div class="compare-flow-row">
+        <div class="flow-box">
+            <div class="flow-box-label">Before Report (Previous)</div>
+            <div class="flow-box-val mono">{{ report_old }}</div>
         </div>
-        <div class="summary-card summary-arrow">&#x27A1;</div>
-        <div class="summary-card">
-            <div class="summary-label">Current Report</div>
-            <div class="summary-value mono">{{ report_new }}</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-box">
+            <div class="flow-box-label">After Report (Current)</div>
+            <div class="flow-box-val mono">{{ report_new }}</div>
+        </div>
+        <div class="flow-box">
+            <div class="flow-box-label">Overall Health Status</div>
+            <div class="flow-box-val">
+                <span class="status-badge status-{{ summary.overall|lower }}">{{ summary.overall }}</span>
+            </div>
         </div>
     </div>
+
     <div class="summary-stats">
         <div class="stat-pill">
             <span class="stat-pill-label">Total Checks</span>
@@ -85,47 +99,83 @@
             <span class="stat-pill-value">{{ summary.FAIL }}</span>
         </div>
         <div class="stat-pill stat-info">
-            <span class="stat-pill-label">INFO</span>
-            <span class="stat-pill-value">{{ summary.INFO }}</span>
-        </div>
-        <div class="stat-pill">
-            <span class="stat-pill-label">Changes</span>
-            <span class="stat-pill-value">{{ summary.changes }}</span>
-        </div>
-        <div class="stat-pill stat-{{ summary.overall|lower }}">
-            <span class="stat-pill-label">Overall</span>
-            <span class="stat-pill-value">{{ summary.overall }}</span>
+            <span class="stat-pill-label">Changes Detected</span>
+            <span class="stat-pill-value">{{ summary.CHANGED }}</span>
         </div>
     </div>
 </div>
 
-<!-- Category Comparison Tables -->
+<!-- Comparison Category Blocks -->
 {% for category, items in results.items() %}
-<div class="compare-category">
-    <div class="category-header">
-        <h3>{{ category }}</h3>
-        <span class="category-count">{{ items|length }} checks</span>
+<div class="compare-category-block">
+    <div class="category-block-title">
+        <span>{{ category }}</span>
+        <span style="font-size:0.8em;color:#6b7280;">{{ items|length }} metrics evaluated</span>
     </div>
     <div class="table-responsive">
-        <table class="data-table compare-table">
+        <table class="data-table">
             <thead>
                 <tr>
-                    <th>Item</th>
-                    <th>Previous Value</th>
-                    <th>Current Value</th>
-                    <th>Difference</th>
-                    <th>Status</th>
+                    <th style="width:25%;">Item / Metric</th>
+                    <th style="width:30%;">Previous Value</th>
+                    <th style="width:30%;">Current Value</th>
+                    <th style="width:15%;">Status</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in items %}
-                <tr class="status-row-{{ item.status|lower }}">
-                    <td class="item-name">{{ item.item }}</td>
-                    <td class="value-cell"><pre class="inline-pre">{{ item.previous }}</pre></td>
-                    <td class="value-cell"><pre class="inline-pre">{{ item.current }}</pre></td>
-                    <td class="diff-cell">{{ item.difference }}</td>
-                    <td class="status-cell">
-                        <span class="status-badge status-{{ item.status|lower }}">{{ item.status }}</span>
+                <tr>
+                    <td class="mono" style="font-weight:700;">{{ item.item }}</td>
+                    
+                    <!-- Previous Value Cell -->
+                    <td>
+                        {% if item.type == 'progress' %}
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <span class="mono">{{ item.previous }}</span>
+                            <div class="mini-progress">
+                                <div class="mini-progress-fill" style="width: {{ item.prev_pct }}%;">{{ item.prev_pct }}%</div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <span class="mono">{{ item.previous }}</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Current Value Cell -->
+                    <td>
+                        {% if item.type == 'progress' %}
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <span class="mono">{{ item.current }}</span>
+                            <div class="mini-progress">
+                                <div class="mini-progress-fill" style="width: {{ item.curr_pct }}%;">{{ item.curr_pct }}%</div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <span class="mono">{{ item.current }}</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Status Cell -->
+                    <td>
+                        {% if item.status == 'NO_CHANGE' %}
+                        <span class="status-badge status-nochange">No Change</span>
+                        {% elif item.status == 'CHANGED' %}
+                        <span class="status-badge status-changed">Changed</span>
+                        {% elif item.status == 'RUNNING' or item.status == 'PASS' %}
+                        <span class="status-badge status-healthy">Running</span>
+                        {% elif item.status == 'STOPPED' or item.status == 'FAIL' %}
+                        <span class="status-badge status-danger">Stopped</span>
+                        {% elif item.status == 'RESTARTED' %}
+                        <span class="status-badge status-info">Restarted</span>
+                        {% elif item.status == 'NEW' %}
+                        <span class="status-badge status-info">New</span>
+                        {% elif item.status == 'REMOVED' %}
+                        <span class="status-badge status-danger">Removed</span>
+                        {% elif item.status == 'WARNING' %}
+                        <span class="status-badge status-warning">Warning</span>
+                        {% else %}
+                        <span class="status-badge status-info">{{ item.status }}</span>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
@@ -135,16 +185,9 @@
 </div>
 {% endfor %}
 
-{% elif json_reports|length < 2 %}
-<div class="empty-state">
-    <div class="empty-icon">&#x1F4CA;</div>
-    <h3>Insufficient Reports</h3>
-    <p>At least 2 JSON reports are required for comparison. Currently {{ json_reports|length }} available.</p>
-    <p>Run <code>health_check.sh</code> on the server to generate JSON reports.</p>
-</div>
 {% endif %}
 
 <div class="back-link">
-    <a href="{{ url_for('dashboard.index') }}" class="btn btn-sm btn-primary">&#x2190; Back to Dashboard</a>
+    <a href="{{ url_for('dashboard.index') }}" class="btn btn-sm btn-primary">&larr; Back to Dashboard</a>
 </div>
 {% endblock %}
