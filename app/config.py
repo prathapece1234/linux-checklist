@@ -23,6 +23,9 @@ class Config:
     # Authentication
     AUTH_ENABLED = os.environ.get("AUTH_ENABLED", "false").lower() in ("true", "1", "yes")
 
+    # Client Branding
+    CLIENT_NAME = os.environ.get("CLIENT_NAME", "XIUS (XCO – XIUS Central Office)")
+
     # Server
     LISTEN_HOST = os.environ.get("LISTEN_HOST", "0.0.0.0")
     LISTEN_PORT = int(os.environ.get("LISTEN_PORT", "5000"))

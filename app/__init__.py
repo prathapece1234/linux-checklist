@@ -79,6 +79,14 @@ def create_app():
             session.clear()
             return redirect(url_for("auth.login", timeout="1"))
 
+    # Context Processor: Inject global template variables
+    @app.context_processor
+    def inject_globals():
+        return {
+            "client_name": Config.CLIENT_NAME,
+            "auth_enabled": Config.AUTH_ENABLED,
+        }
+
     # -------------------------------------------------------------------------
     # Error handlers
     # -------------------------------------------------------------------------

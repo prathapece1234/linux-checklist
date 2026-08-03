@@ -283,6 +283,17 @@ find "${WEB_ROOT}" -type f -exec chmod 644 {} +
 echo ""
 echo "[Step 6/11] Environment Configuration..."
 
+DEFAULT_CLIENT="XIUS (XCO – XIUS Central Office)"
+CLIENT_NAME_VAL="${DEFAULT_CLIENT}"
+
+if [ "$IS_UPGRADE" = false ] && [ -t 0 ]; then
+    echo ""
+    read -rp "Enter Client Name [Default: ${DEFAULT_CLIENT}]: " INPUT_CLIENT_NAME
+    if [ -n "${INPUT_CLIENT_NAME}" ]; then
+        CLIENT_NAME_VAL="${INPUT_CLIENT_NAME}"
+    fi
+fi
+
 if [ ! -f "${ENV_FILE}" ]; then
     SECRET_KEY=$("${VENV_DIR}/bin/python" -c "import secrets; print(secrets.token_hex(32))")
     cat << EOF > "${ENV_FILE}"
@@ -293,12 +304,16 @@ LOG_DIR=${LOG_DIR}
 LISTEN_HOST=0.0.0.0
 LISTEN_PORT=${API_PORT}
 AUTH_ENABLED=false
+CLIENT_NAME="${CLIENT_NAME_VAL}"
 EOF
     chown "${SERVICE_USER}:${SERVICE_GROUP}" "${ENV_FILE}"
     chmod 600 "${ENV_FILE}"
     echo "[INFO] Generated new secret key and environment file."
 else
-    echo "[INFO] Existing environment file found (${ENV_FILE}). Preserving settings."
+    if ! grep -q "^CLIENT_NAME=" "${ENV_FILE}"; then
+        echo "CLIENT_NAME=\"${CLIENT_NAME_VAL}\"" >> "${ENV_FILE}"
+    fi
+    echo "[INFO] Existing environment file found (${ENV_FILE}). Settings updated/preserved."
 fi
 
 # =============================================================================
