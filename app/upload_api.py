@@ -38,8 +38,11 @@ def get_file_extension(filename):
 
 
 def generate_report_filename(hostname, original_filename):
-    """Generate a unique timestamped filename."""
+    """Generate or preserve report filename for matching HTML, TXT, and JSON files."""
     ext = get_file_extension(original_filename) or ".html"
+    base = os.path.basename(original_filename) if original_filename else ""
+    if base.startswith("HealthCheck_"):
+        return base
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     return f"HealthCheck_{hostname}_{timestamp}{ext}"
 

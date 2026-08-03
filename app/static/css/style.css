@@ -332,8 +332,11 @@ a:hover { text-decoration: underline; }
 .btn-primary { background: #1754D1; color: #ffffff !important; }
 .btn-primary:hover { background: #1245B0; }
 
-.btn-secondary { background: #ffffff; color: #202939 !important; border: 1px solid #E6EAF2; }
-.btn-secondary:hover { background: #F6F8FC; border-color: #CBD5E1; }
+.btn-secondary { background: #f3f4f6; color: #374151 !important; border: 1px solid #d1d5db; }
+.btn-secondary:hover { background: #e5e7eb; }
+
+.btn-danger { background: #C61D24; color: #ffffff !important; }
+.btn-danger:hover { background: #A3151B; }
 
 .btn-compare { background: #202939; color: #ffffff !important; }
 .btn-compare:hover { background: #0F172A; }
@@ -342,6 +345,22 @@ a:hover { text-decoration: underline; }
 
 .btn-sm { padding: 7px 14px; font-size: 0.82em; }
 .btn-xs { padding: 5px 12px; font-size: 0.78em; border-radius: 8px; }
+
+.history-actions-wrap {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+}
+
+.history-btn {
+    min-width: 120px;
+    height: 32px;
+    font-size: 0.82em;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-weight: 600;
+}
 
 /* Status Badges */
 .status-badge {

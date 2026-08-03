@@ -3,49 +3,71 @@
 {% block title %}Report History — {{ hostname }} — Enterprise Linux Health Dashboard{% endblock %}
 
 {% block content %}
-<div class="breadcrumb">
-    <a href="{{ url_for('dashboard.index') }}">Dashboard</a>
-    <span class="breadcrumb-sep">&rsaquo;</span>
-    <span>{{ hostname }}</span>
-    <span class="breadcrumb-sep">&rsaquo;</span>
-    <span>Report History</span>
-</div>
-
 <div class="page-header-row">
     <div class="page-title">
         <h2>Report History — {{ hostname }}</h2>
-        <p class="page-subtitle">{{ reports|length }} historical health reports collected for this host</p>
+        <p class="page-subtitle">{{ reports|length }} historical health check reports collected for this server</p>
     </div>
 </div>
 
 {% if reports %}
 <div class="table-responsive">
-    <table class="data-table">
+    <table class="data-table history-table">
         <thead>
             <tr>
-                <th>#</th>
-                <th>Timestamp</th>
-                <th>Filename</th>
-                <th>Size</th>
-                <th>View Options</th>
-                <th>Download Options</th>
+                <th style="width:20%;">Timestamp</th>
+                <th style="width:30%;">Filename</th>
+                <th style="width:10%;">Size</th>
+                <th style="width:25%;text-align:center;">View Options</th>
+                <th style="width:15%;text-align:center;">Download Options</th>
             </tr>
         </thead>
         <tbody>
             {% for report in reports %}
             <tr>
-                <td>{{ loop.index }}</td>
-                <td>{{ report.mtime_str }}</td>
-                <td class="mono">{{ report.filename }}</td>
-                <td>{{ report.size_kb }} KB</td>
-                <td class="actions-cell">
-                    <a href="{{ url_for('report.view_report', hostname=hostname, filename=report.filename) }}" class="btn btn-xs btn-primary">&#x1F441; View HTML</a>
-                    <a href="{{ url_for('report.view_raw_txt', hostname=hostname, filename=report.filename) }}" class="btn btn-xs btn-secondary">&#x1F4C4; View Raw TXT</a>
-                    <a href="{{ url_for('report.view_raw_json', hostname=hostname, filename=report.filename) }}" class="btn btn-xs btn-secondary">&#x1F4D1; View JSON</a>
+                <!-- Timestamp -->
+                <td style="font-weight:500;color:#202939;">{{ report.mtime_str }}</td>
+
+                <!-- Filename -->
+                <td class="mono" style="color:#1754D1;font-weight:600;">{{ report.filename }}</td>
+
+                <!-- Size -->
+                <td style="font-weight:500;color:#6B7280;">{{ report.size_kb }} KB</td>
+
+                <!-- View Options: View HTML (Blue) | View Raw TXT (Light Gray) -->
+                <td style="text-align:center;">
+                    <div class="history-actions-wrap">
+                        <a href="{{ url_for('report.view_report', hostname=hostname, filename=report.filename) }}" 
+                           class="btn btn-xs btn-primary history-btn" 
+                           title="View full HTML report in browser">
+                            <i data-lucide="eye" style="width:14px;height:14px;"></i> View HTML
+                        </a>
+
+                        {% if report.has_txt %}
+                        <a href="{{ url_for('report.view_raw_txt', hostname=hostname, filename=report.filename) }}" 
+                           class="btn btn-xs btn-secondary history-btn" 
+                           title="View raw TXT report output in browser">
+                            <i data-lucide="file-text" style="width:14px;height:14px;"></i> View Raw TXT
+                        </a>
+                        {% else %}
+                        <a href="{{ url_for('report.view_raw_txt', hostname=hostname, filename=report.filename) }}" 
+                           class="btn btn-xs btn-secondary history-btn" 
+                           title="View raw report output in browser">
+                            <i data-lucide="file-text" style="width:14px;height:14px;"></i> View Raw TXT
+                        </a>
+                        {% endif %}
+                    </div>
                 </td>
-                <td class="actions-cell">
-                    <a href="{{ url_for('report.download_report', hostname=hostname, filename=report.filename) }}" class="btn btn-xs btn-secondary">&#x2B07; HTML</a>
-                    <a href="{{ url_for('report.download_report', hostname=hostname, filename=report.filename|replace('.html', '.txt')) }}" class="btn btn-xs btn-secondary">&#x2B07; TXT</a>
+
+                <!-- Download Options: Download TXT (Red) -->
+                <td style="text-align:center;">
+                    <div class="history-actions-wrap" style="justify-content:center;">
+                        <a href="{{ url_for('report.download_report', hostname=hostname, filename=report.filename|replace('.html', '.txt')) }}" 
+                           class="btn btn-xs btn-danger history-btn" 
+                           title="Download original raw text report">
+                            <i data-lucide="download" style="width:14px;height:14px;"></i> Download TXT
+                        </a>
+                    </div>
                 </td>
             </tr>
             {% endfor %}
@@ -54,12 +76,15 @@
 </div>
 {% else %}
 <div class="empty-state">
+    <div class="empty-icon"><i data-lucide="folder-open" style="width:48px;height:48px;"></i></div>
     <h3>No Reports Found</h3>
-    <p>No health check reports are available for this server.</p>
+    <p>No health check reports are available for {{ hostname }}.</p>
 </div>
 {% endif %}
 
-<div class="back-link">
-    <a href="{{ url_for('dashboard.index') }}" class="btn btn-sm btn-primary">&larr; Back to Dashboard</a>
+<div style="margin-top:24px;">
+    <a href="{{ url_for('dashboard.index') }}" class="btn btn-secondary">
+        <i data-lucide="arrow-left" style="width:16px;height:16px;"></i> Back to Dashboard
+    </a>
 </div>
 {% endblock %}

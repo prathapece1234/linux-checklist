@@ -121,8 +121,17 @@ def history(hostname):
         if f.startswith("HealthCheck_") and f.endswith(".html") and f != "latest.html":
             fpath = os.path.join(host_dir, f)
             mtime = os.path.getmtime(fpath)
+            
+            # Match TXT report file
+            base_name = os.path.splitext(f)[0]
+            txt_filename = base_name + ".txt"
+            txt_filepath = os.path.join(host_dir, txt_filename)
+            has_txt = os.path.isfile(txt_filepath)
+
             reports.append({
                 "filename": f,
+                "txt_filename": txt_filename if has_txt else None,
+                "has_txt": has_txt,
                 "mtime": mtime,
                 "mtime_str": datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S"),
                 "size": os.path.getsize(fpath),

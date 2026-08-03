@@ -1107,7 +1107,7 @@ echo "===================================================="
 echo "Uploading reports to central server..."
 echo "===================================================="
 
-for RFILE in "$HTML_REPORT" "$JSON_REPORT"; do
+for RFILE in "$HTML_REPORT" "$TXT_REPORT" "$JSON_REPORT"; do
     if [ -f "$RFILE" ]; then
         attempt=0
         upload_success=false
