@@ -641,66 +641,122 @@ a:hover { text-decoration: underline; }
 
 .login-card-container {
     width: 100%;
-    max-width: 410px;
+    max-width: 430px;
     background: #ffffff;
     border: 1px solid #E6EAF2;
-    border-radius: 18px;
-    padding: 42px 38px;
-    box-shadow: 0 14px 40px rgba(32, 41, 57, 0.07);
+    border-radius: 20px;
+    padding: 44px 40px;
+    box-shadow: 0 20px 50px rgba(32, 41, 57, 0.09);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.login-card-header { text-align: center; margin-bottom: 28px; }
-.login-card-icon {
-    width: 62px;
-    height: 62px;
-    background: #EFF6FF;
-    color: #1754D1;
+.login-card-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+/* 72px Circle with Blue -> Red Enterprise Gradient */
+.login-card-icon-enterprise {
+    width: 72px;
+    height: 72px;
     border-radius: 50%;
+    background: linear-gradient(135deg, #2563EB 0%, #C1121F 100%);
+    border: 2px solid rgba(255, 255, 255, 0.25);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.8em;
-    margin: 0 auto 16px;
-    border: 2px solid #BFDBFE;
+    margin: 0 auto 18px;
+    box-shadow: 0 8px 24px rgba(37, 99, 235, 0.25);
 }
 
-.login-card-header h2 { font-size: 1.3em; font-weight: 600; color: #202939; }
-.login-card-header p { font-size: 0.88em; color: #6B7280; margin-top: 4px; }
+.login-card-header h2 {
+    font-size: 1.35em;
+    font-weight: 700;
+    color: #1B1B1F;
+    letter-spacing: -0.2px;
+}
 
-.login-form-group { margin-bottom: 20px; }
-.login-form-group label { display: block; font-size: 0.88em; font-weight: 600; color: #202939; margin-bottom: 6px; }
+.login-card-header p {
+    font-size: 0.88em;
+    color: #6B7280;
+    margin-top: 4px;
+    font-weight: 500;
+}
+
+.login-form-group {
+    margin-bottom: 20px;
+}
+
+.login-form-group label {
+    display: block;
+    font-size: 0.88em;
+    font-weight: 600;
+    color: #202939;
+    margin-bottom: 6px;
+}
 
 .login-form-group input[type="text"],
 .login-form-group input[type="password"] {
     width: 100%;
-    padding: 12px 16px;
+    padding: 13px 16px;
     border: 1px solid #E6EAF2;
     border-radius: 12px;
     font-size: 0.95em;
     font-weight: 500;
     outline: none;
-    transition: border-color 0.2s, box-shadow 0.2s;
     background: #ffffff;
-}
-.login-form-group input:focus {
-    border-color: #1754D1;
-    box-shadow: 0 0 0 3px rgba(23, 84, 209, 0.12);
+    color: #1B1B1F;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
+.login-form-group input:focus {
+    border-color: #2563EB;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+}
+
+/* Remember Me Checkbox Group - 22px Vertical Spacing */
+.login-checkbox-group {
+    margin-top: 14px;
+    margin-bottom: 22px;
+}
+
+.login-checkbox-label {
+    font-size: 0.88em;
+    color: #4B5563;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.login-checkbox-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #2563EB;
+    cursor: pointer;
+}
+
+/* 48px Height Login Button */
 .btn-login {
     width: 100%;
-    padding: 12px;
-    background: #1754D1;
+    height: 48px;
+    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
     color: #ffffff !important;
     border: none;
     border-radius: 12px;
-    font-size: 0.95em;
+    font-size: 0.98em;
     font-weight: 600;
     cursor: pointer;
-    transition: background 0.2s;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
-.btn-login:hover { background: #1245B0; }
+
+.btn-login:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
+    background: linear-gradient(135deg, #1D4ED8 0%, #1E40AF 100%);
+}
 
 /* =============================================================================
    FOOTER (Centered Horizontally)

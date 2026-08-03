@@ -76,17 +76,11 @@
             <div class="login-card-container">
 
                 <div class="login-card-header">
-                    <div class="login-card-icon">
-                        <!-- Linux Server Icon -->
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
-                            <rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
-                            <line x1="6" y1="6" x2="6.01" y2="6"/>
-                            <line x1="6" y1="18" x2="6.01" y2="18"/>
-                        </svg>
+                    <div class="login-card-icon-enterprise">
+                        <i data-lucide="server-cog" style="width:34px;height:34px;color:#ffffff;"></i>
                     </div>
                     <h2>Enterprise Linux Health Dashboard</h2>
-                    <p>Secure Login</p>
+                    <p>Secure Enterprise Login</p>
                 </div>
 
                 {% if error %}
@@ -101,7 +95,7 @@
                 </div>
                 {% endif %}
 
-                <form method="POST" action="{{ url_for('auth.login') }}">
+                <form method="POST" action="{{ url_for('auth.login') }}" id="loginForm">
                     <div class="login-form-group">
                         <label for="username">Username</label>
                         <input type="text" id="username" name="username" placeholder="Enter username" required autofocus autocomplete="username">
@@ -114,7 +108,7 @@
 
                     <div class="login-checkbox-group">
                         <label class="login-checkbox-label">
-                            <input type="checkbox" name="remember_me"> Remember Me
+                            <input type="checkbox" name="remember_me" id="remember_me"> Remember Me
                         </label>
                     </div>
 
@@ -128,6 +122,32 @@
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             if (window.lucide) { lucide.createIcons(); }
+
+            var userField = document.getElementById("username");
+            var rememberCheckbox = document.getElementById("remember_me");
+            var loginForm = document.getElementById("loginForm");
+
+            // Restore saved username if Remember Me was previously checked
+            var savedUser = localStorage.getItem("health_dash_saved_user");
+            var rememberState = localStorage.getItem("health_dash_remember_me");
+
+            if (rememberState === "true" && savedUser) {
+                userField.value = savedUser;
+                rememberCheckbox.checked = true;
+            }
+
+            // Save or clear on form submit
+            if (loginForm) {
+                loginForm.addEventListener("submit", function() {
+                    if (rememberCheckbox.checked) {
+                        localStorage.setItem("health_dash_saved_user", userField.value.trim());
+                        localStorage.setItem("health_dash_remember_me", "true");
+                    } else {
+                        localStorage.removeItem("health_dash_saved_user");
+                        localStorage.removeItem("health_dash_remember_me");
+                    }
+                });
+            }
         });
     </script>
 </body>
