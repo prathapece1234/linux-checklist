@@ -1043,9 +1043,10 @@ generate_json_report() {
     swap_used=$(free -h 2>/dev/null | awk '/^Swap:/{print $3}')
     swap_pct=$(free 2>/dev/null | awk '/^Swap:/{if($2>0) printf "%.1f%%", ($3/$2)*100; else print "0%"}')
 
-    local selinux_status="N/A"
+    local selinux_status="Disabled"
     if command -v sestatus >/dev/null 2>&1; then
         selinux_status=$(sestatus 2>/dev/null | awk -F: '/Current mode:/{gsub(/[ \t]/, "", $2); print $2}')
+        [ -z "$selinux_status" ] && selinux_status="Disabled"
     fi
 
     local ntp_status="Not Synchronized"
@@ -1055,52 +1056,118 @@ generate_json_report() {
         fi
     fi
 
-    cat << EOF > "$JSON_REPORT"
-{
-  "system": {
-    "hostname": "${CURRENT_HOSTNAME}",
-    "fqdn": "${CURRENT_FQDN}",
-    "ip": "${CURRENT_IP}",
-    "os": "${OS_FULL}",
-    "kernel": "${CURRENT_KERNEL}",
-    "cpu_cores": "${CURRENT_NPROC}",
-    "ram_total": "${ram_total:-N/A}",
-    "uptime": "${CURRENT_UPTIME}"
-  },
-  "storage": {
-    "filesystems": [
-$(df -P -h 2>/dev/null | awk 'NR>1 {printf "      {\"filesystem\":\"%s\",\"size\":\"%s\",\"used\":\"%s\",\"avail\":\"%s\",\"use_pct\":\"%s\",\"mount\":\"%s\"},\n", $1,$2,$3,$4,$5,$6}' | sed '$ s/,$//')
-    ]
-  },
-  "memory": {
-    "ram_total": "${ram_total:-N/A}",
-    "ram_used": "${ram_used:-N/A}",
-    "ram_used_pct": "${ram_pct:-0%}",
-    "swap_total": "${swap_total:-N/A}",
-    "swap_used": "${swap_used:-N/A}",
-    "swap_used_pct": "${swap_pct:-0%}"
-  },
-  "services": {
-    "sshd": "$(check_service_status sshd | cut -d'|' -f1)",
-    "docker": "$(check_service_status docker | cut -d'|' -f1)",
-    "nginx": "$(check_service_status nginx | cut -d'|' -f1)",
-    "chronyd": "$(check_service_status chronyd | cut -d'|' -f1)",
-    "multipathd": "$(check_service_status multipathd | cut -d'|' -f1)"
-  },
-  "network": {
-    "ip_addresses": [
-$(ip -o addr show 2>/dev/null | awk '{printf "      \"%s %s\",\n", $2, $4}' | sed '$ s/,$//')
-    ],
-    "routes": [
-$(route -n 2>/dev/null | awk 'NR>2 {printf "      \"%s netmask %s gw %s dev %s\",\n", $1,$3,$2,$8}' | sed '$ s/,$//')
-    ]
-  },
-  "security": {
-    "selinux": "${selinux_status:-Disabled}",
-    "ntp": "${ntp_status}"
-  }
+    local sshd_st docker_st nginx_st chrony_st multi_st
+    sshd_st=$(check_service_status sshd | cut -d'|' -f1)
+    docker_st=$(check_service_status docker | cut -d'|' -f1)
+    nginx_st=$(check_service_status nginx | cut -d'|' -f1)
+    chrony_st=$(check_service_status chronyd | cut -d'|' -f1)
+    multi_st=$(check_service_status multipathd | cut -d'|' -f1)
+
+    # Use Python json.dumps() to guarantee RFC8259 compliance with no control character or unescaped quote errors
+    if command -v python3 >/dev/null 2>&1 || command -v python >/dev/null 2>&1; then
+        PY_CMD=$(command -v python3 || command -v python)
+        $PY_CMD - << PYEOF > "$JSON_REPORT"
+import json
+import subprocess
+import os
+
+def get_df():
+    filesystems = []
+    try:
+        out = subprocess.check_output("df -P -h 2>/dev/null", shell=True, text=True)
+        lines = out.strip().split('\n')[1:]
+        for line in lines:
+            parts = line.split()
+            if len(parts) >= 6:
+                filesystems.append({
+                    "filesystem": parts[0],
+                    "size": parts[1],
+                    "used": parts[2],
+                    "avail": parts[3],
+                    "use_pct": parts[4],
+                    "mount": parts[5]
+                })
+    except Exception:
+        pass
+    return filesystems
+
+def get_ips():
+    ips = []
+    try:
+        out = subprocess.check_output("ip -o addr show 2>/dev/null", shell=True, text=True)
+        for line in out.strip().split('\n'):
+            parts = line.split()
+            if len(parts) >= 4:
+                ips.append(f"{parts[1]} {parts[3]}")
+    except Exception:
+        pass
+    return ips
+
+def get_routes():
+    routes = []
+    try:
+        out = subprocess.check_output("route -n 2>/dev/null", shell=True, text=True)
+        lines = out.strip().split('\n')[2:]
+        for line in lines:
+            parts = line.split()
+            if len(parts) >= 8:
+                routes.append(f"{parts[0]} netmask {parts[2]} gw {parts[1]} dev {parts[7]}")
+    except Exception:
+        pass
+    return routes
+
+data = {
+    "system": {
+        "hostname": "${CURRENT_HOSTNAME}",
+        "fqdn": "${CURRENT_FQDN}",
+        "ip": "${CURRENT_IP}",
+        "os": "${OS_FULL}",
+        "kernel": "${CURRENT_KERNEL}",
+        "cpu_cores": "${CURRENT_NPROC}",
+        "ram_total": "${ram_total:-N/A}",
+        "uptime": "${CURRENT_UPTIME}"
+    },
+    "storage": {
+        "filesystems": get_df()
+    },
+    "memory": {
+        "ram_total": "${ram_total:-N/A}",
+        "ram_used": "${ram_used:-N/A}",
+        "ram_used_pct": "${ram_pct:-0%}",
+        "swap_total": "${swap_total:-N/A}",
+        "swap_used": "${swap_used:-N/A}",
+        "swap_used_pct": "${swap_pct:-0%}"
+    },
+    "services": {
+        "sshd": "${sshd_st}",
+        "docker": "${docker_st}",
+        "nginx": "${nginx_st}",
+        "chronyd": "${chrony_st}",
+        "multipathd": "${multi_st}"
+    },
+    "network": {
+        "ip_addresses": get_ips(),
+        "routes": get_routes()
+    },
+    "security": {
+        "selinux": "${selinux_status}",
+        "ntp": "${ntp_status}"
+    }
 }
-EOF
+
+print(json.dumps(data, indent=2))
+PYEOF
+    fi
+
+    # Immediate RFC8259 Validation Step
+    if command -v python3 >/dev/null 2>&1; then
+        if ! python3 -c "import json, sys; json.load(open(sys.argv[1]))" "$JSON_REPORT" >/dev/null 2>&1; then
+            echo "[ERROR] Generated JSON failed validation: $JSON_REPORT"
+            rm -f "$JSON_REPORT"
+        else
+            echo "[INFO] JSON report validated successfully (RFC8259 compliant)."
+        fi
+    fi
 }
 
 generate_json_report
