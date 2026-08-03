@@ -11,16 +11,17 @@
 <body>
     <nav class="top-nav">
         <div class="nav-content">
-            <div class="nav-brand" style="display:flex;align-items:center;">
+            <div class="nav-brand">
                 <a href="{{ url_for('dashboard.index') }}" style="display:flex;align-items:center;gap:12px;">
-                    <img src="{{ url_for('static', filename='images/linux_logo.png') }}" alt="Linux Logo" style="width:28px;height:28px;border-radius:6px;object-fit:cover;">
+                    <img src="{{ url_for('static', filename='images/linux_logo.png') }}" alt="Linux Logo" style="width:30px;height:30px;border-radius:6px;object-fit:cover;">
                     <span>Enterprise Linux Health Dashboard</span>
                 </a>
-                <span class="client-badge">
-                    <i data-lucide="building-2" style="width:14px;height:14px;vertical-align:middle;"></i> Client: <strong>XCO - XIUS Central Office</strong>
-                </span>
             </div>
-            <div class="nav-right">
+            <div class="nav-right" style="display:flex;align-items:center;gap:18px;">
+                <div class="header-client-card">
+                    <img src="{{ url_for('static', filename='images/xius_logo.png') }}" alt="XIUS Logo" class="client-logo-img">
+                    <span class="client-name-text">XCO - XIUS Central Office</span>
+                </div>
                 {% if auth_enabled and user %}
                 <span class="nav-user">Welcome, <strong>{{ user }}</strong></span>
                 <a href="{{ url_for('auth.logout') }}" class="nav-link logout-btn"><i data-lucide="log-out" style="width:16px;height:16px;vertical-align:middle;"></i> Logout</a>
