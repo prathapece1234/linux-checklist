@@ -62,33 +62,55 @@ a:hover { text-decoration: underline; }
     gap: 12px;
 }
 
-/* Header Client Text Block (Right-aligned, no pills/badges/borders) */
-.header-client-block {
+/* Right Header 3-Line Compact Stack */
+.nav-right-stack {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
     text-align: right;
-    margin-right: 50px;
+    gap: 2px;
 }
 
-.header-client-label {
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 1.2px;
-    color: rgba(255, 255, 255, 0.75);
-    line-height: 1;
-    display: block;
-}
-
-.header-client-val {
-    font-size: 20px;
+.header-client-title {
+    color: #ffffff;
+    font-size: 1.05em;
     font-weight: 700;
-    color: #FFFFFF;
     line-height: 1.2;
-    display: block;
-    margin-top: 2px;
+    letter-spacing: 0.2px;
     white-space: nowrap;
+}
+
+.header-welcome-text {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.84em;
+    font-weight: 400;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.header-welcome-text strong {
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.header-logout-wrap {
+    margin-top: 1px;
+}
+
+.header-logout-btn {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.78em;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: color 0.2s ease;
+}
+
+.header-logout-btn:hover {
+    color: #ffffff;
+    text-decoration: underline;
 }
 
 .nav-right {

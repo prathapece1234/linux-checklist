@@ -17,14 +17,17 @@
                     <span>Enterprise Linux Health Dashboard</span>
                 </a>
             </div>
-            <div class="nav-right" style="display:flex;align-items:center;">
-                <div class="header-client-block">
-                    <span class="header-client-label">Client</span>
-                    <span class="header-client-val">XCO – XIUS Central Office</span>
+            <div class="nav-right-stack">
+                <div class="header-client-title">XCO – XIUS Central Office</div>
+                <div class="header-welcome-text">
+                    Welcome back, <strong>{{ user if user else 'Prathap' }}</strong>
                 </div>
-                {% if auth_enabled and user %}
-                <span class="nav-user">Welcome, <strong>{{ user }}</strong></span>
-                <a href="{{ url_for('auth.logout') }}" class="nav-link logout-btn"><i data-lucide="log-out" style="width:16px;height:16px;vertical-align:middle;"></i> Logout</a>
+                {% if auth_enabled %}
+                <div class="header-logout-wrap">
+                    <a href="{{ url_for('auth.logout') }}" class="header-logout-btn">
+                        <i data-lucide="log-out" style="width:13px;height:13px;vertical-align:middle;"></i> Logout
+                    </a>
+                </div>
                 {% endif %}
             </div>
         </div>
