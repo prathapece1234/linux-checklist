@@ -254,35 +254,94 @@ HTMLMETA
         a:hover { text-decoration: underline; }
 
         .top-nav {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-            color: #fff;
-            padding: 18px 30px;
+            background: linear-gradient(90deg, #B71C1C 0%, #8E1720 20%, #1E1E24 45%, #183A6D 75%, #2563EB 100%);
+            color: #ffffff;
+            min-height: 100px;
+            padding: 14px 30px;
             position: sticky;
             top: 0;
             z-index: 1000;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+            backdrop-filter: blur(8px);
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
+            display: flex;
+            align-items: center;
         }
         .top-nav .nav-content {
             max-width: 1600px;
             margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 220px 1fr 220px;
             align-items: center;
-            flex-wrap: wrap;
         }
-        .top-nav h1 { font-size: 1.5em; font-weight: 700; }
-        .nav-meta { display: flex; gap: 25px; flex-wrap: wrap; margin-top: 5px; }
-        .nav-meta-item { display: flex; align-items: center; gap: 6px; font-size: 0.88em; opacity: 0.9; }
-        .nav-meta-label { font-weight: 600; opacity: 0.7; }
+        .nav-left { display: flex; align-items: center; }
+        .btn-back-dashboard {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: #ffffff;
+            color: #1f2937 !important;
+            border: 2px solid #ef5350;
+            padding: 8px 18px;
+            border-radius: 8px;
+            font-size: 0.88em;
+            font-weight: 700;
+            text-decoration: none !important;
+            transition: all 0.25s ease;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+        .btn-back-dashboard:hover {
+            background: #d32f2f;
+            color: #ffffff !important;
+            border-color: #d32f2f;
+            box-shadow: 0 4px 12px rgba(211, 47, 47, 0.4);
+        }
+        .nav-center { text-align: center; }
+        .report-title-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .report-title-icon { font-size: 1.5em; }
+        .report-title-text {
+            font-size: 32px;
+            font-weight: 800;
+            color: #ffffff;
+            line-height: 1.2;
+            letter-spacing: -0.5px;
+        }
+        .title-accent-line {
+            height: 2px;
+            width: 60px;
+            background: #ef5350;
+            margin: 6px auto 8px;
+            border-radius: 1px;
+        }
+        .nav-meta-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            font-size: 15px;
+            color: #e5e7eb;
+        }
+        .nav-meta-item strong { color: #ffffff; font-weight: 700; }
+        .meta-separator { color: rgba(255,255,255,0.4); font-weight: 300; }
+        .nav-right { width: 100%; }
 
-        .page-layout { display: flex; min-height: calc(100vh - 80px); }
+        .page-layout { display: flex; min-height: calc(100vh - 100px); }
 
         .sidebar {
             position: sticky;
-            top: 76px;
+            top: 104px;
             width: 240px;
             min-width: 240px;
-            height: calc(100vh - 76px);
+            height: calc(100vh - 104px);
             background: #fff;
             box-shadow: 2px 0 8px rgba(0,0,0,0.08);
             overflow-y: auto;
@@ -367,6 +426,8 @@ HTMLMETA
         .page-footer { text-align: center; padding: 25px; color: #888; font-size: 0.85em; background: #fff; border-top: 1px solid #eee; margin-top: 20px; }
 
         @media (max-width: 992px) {
+            .top-nav .nav-content { grid-template-columns: 1fr; gap: 12px; text-align: center; }
+            .nav-left { justify-content: center; }
             .sidebar { display: none; }
             .main-content { max-width: 100%; padding: 20px 15px; }
         }
@@ -378,17 +439,28 @@ HTMLSTYLE
     cat >> "$HTML_REPORT" << HTMLNAV
     <nav class="top-nav">
         <div class="nav-content">
-            <div style="display:flex;align-items:center;gap:15px;">
-                <a href="/" style="background:rgba(255,255,255,0.18);color:#fff;padding:6px 16px;border-radius:6px;font-size:0.85em;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">&larr; Back to Dashboard</a>
-                <h1>&#x1F5A5; Linux Health Check Report</h1>
+            <div class="nav-left">
+                <a href="/" class="btn-back-dashboard">&larr; Back to Dashboard</a>
             </div>
-            <div class="nav-meta">
-                <div class="nav-meta-item"><span class="nav-meta-label">Host:</span><span>${hostname_val}</span></div>
-                <div class="nav-meta-item"><span class="nav-meta-label">IP:</span><span>${ip_addr}</span></div>
-                <div class="nav-meta-item"><span class="nav-meta-label">OS:</span><span>${os_info}</span></div>
-                <div class="nav-meta-item"><span class="nav-meta-label">Kernel:</span><span>${kernel}</span></div>
-                <div class="nav-meta-item"><span class="nav-meta-label">Date:</span><span>${report_date}</span></div>
+            <div class="nav-center">
+                <div class="report-title-wrap">
+                    <span class="report-title-icon">&#x1F5A5;</span>
+                    <h1 class="report-title-text">Linux Health Check Report</h1>
+                </div>
+                <div class="title-accent-line"></div>
+                <div class="nav-meta-row">
+                    <span class="nav-meta-item"><strong>Host:</strong> ${hostname_val}</span>
+                    <span class="meta-separator">|</span>
+                    <span class="nav-meta-item"><strong>OS:</strong> ${os_info}</span>
+                    <span class="meta-separator">|</span>
+                    <span class="nav-meta-item"><strong>Kernel:</strong> ${kernel}</span>
+                    <span class="meta-separator">|</span>
+                    <span class="nav-meta-item"><strong>IP:</strong> ${ip_addr}</span>
+                    <span class="meta-separator">|</span>
+                    <span class="nav-meta-item"><strong>Generated:</strong> ${report_date}</span>
+                </div>
             </div>
+            <div class="nav-right"></div>
         </div>
     </nav>
     <div class="page-layout">
