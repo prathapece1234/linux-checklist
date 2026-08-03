@@ -1057,19 +1057,46 @@ generate_json_report() {
     fi
 
     local sshd_st docker_st nginx_st chrony_st multi_st
-    sshd_st=$(check_service_status sshd | cut -d'|' -f1)
-    docker_st=$(check_service_status docker | cut -d'|' -f1)
-    nginx_st=$(check_service_status nginx | cut -d'|' -f1)
-    chrony_st=$(check_service_status chronyd | cut -d'|' -f1)
-    multi_st=$(check_service_status multipathd | cut -d'|' -f1)
+    sshd_st=$(check_service_status sshd | cut -d'|' -f1 | tr -d '\r\n')
+    docker_st=$(check_service_status docker | cut -d'|' -f1 | tr -d '\r\n')
+    nginx_st=$(check_service_status nginx | cut -d'|' -f1 | tr -d '\r\n')
+    chrony_st=$(check_service_status chronyd | cut -d'|' -f1 | tr -d '\r\n')
+    multi_st=$(check_service_status multipathd | cut -d'|' -f1 | tr -d '\r\n')
 
-    # Use Python json.dumps() to guarantee RFC8259 compliance with no control character or unescaped quote errors
+    export PY_HOSTNAME="${CURRENT_HOSTNAME}"
+    export PY_FQDN="${CURRENT_FQDN}"
+    export PY_IP="${CURRENT_IP}"
+    export PY_OS="${OS_FULL}"
+    export PY_KERNEL="${CURRENT_KERNEL}"
+    export PY_CPU_CORES="${CURRENT_NPROC}"
+    export PY_RAM_TOTAL="${ram_total:-N/A}"
+    export PY_RAM_USED="${ram_used:-N/A}"
+    export PY_RAM_PCT="${ram_pct:-0%}"
+    export PY_SWAP_TOTAL="${swap_total:-N/A}"
+    export PY_SWAP_USED="${swap_used:-N/A}"
+    export PY_SWAP_PCT="${swap_pct:-0%}"
+    export PY_UPTIME="${CURRENT_UPTIME}"
+    export PY_SSHD="${sshd_st}"
+    export PY_DOCKER="${docker_st}"
+    export PY_NGINX="${nginx_st}"
+    export PY_CHRONYD="${chrony_st}"
+    export PY_MULTIPATHD="${multi_st}"
+    export PY_SELINUX="${selinux_status}"
+    export PY_NTP="${ntp_status}"
+
+    # Use Python json.dumps() with quoted heredoc to guarantee RFC8259 compliance
     if command -v python3 >/dev/null 2>&1 || command -v python >/dev/null 2>&1; then
         PY_CMD=$(command -v python3 || command -v python)
-        $PY_CMD - << PYEOF > "$JSON_REPORT"
+        $PY_CMD - << 'PYEOF' > "$JSON_REPORT"
 import json
 import subprocess
 import os
+
+def clean_val(key, default="N/A"):
+    val = os.environ.get(key, default)
+    if not val:
+        return default
+    return val.strip()
 
 def get_df():
     filesystems = []
@@ -1118,40 +1145,40 @@ def get_routes():
 
 data = {
     "system": {
-        "hostname": "${CURRENT_HOSTNAME}",
-        "fqdn": "${CURRENT_FQDN}",
-        "ip": "${CURRENT_IP}",
-        "os": "${OS_FULL}",
-        "kernel": "${CURRENT_KERNEL}",
-        "cpu_cores": "${CURRENT_NPROC}",
-        "ram_total": "${ram_total:-N/A}",
-        "uptime": "${CURRENT_UPTIME}"
+        "hostname": clean_val("PY_HOSTNAME"),
+        "fqdn": clean_val("PY_FQDN"),
+        "ip": clean_val("PY_IP"),
+        "os": clean_val("PY_OS"),
+        "kernel": clean_val("PY_KERNEL"),
+        "cpu_cores": clean_val("PY_CPU_CORES"),
+        "ram_total": clean_val("PY_RAM_TOTAL"),
+        "uptime": clean_val("PY_UPTIME")
     },
     "storage": {
         "filesystems": get_df()
     },
     "memory": {
-        "ram_total": "${ram_total:-N/A}",
-        "ram_used": "${ram_used:-N/A}",
-        "ram_used_pct": "${ram_pct:-0%}",
-        "swap_total": "${swap_total:-N/A}",
-        "swap_used": "${swap_used:-N/A}",
-        "swap_used_pct": "${swap_pct:-0%}"
+        "ram_total": clean_val("PY_RAM_TOTAL"),
+        "ram_used": clean_val("PY_RAM_USED"),
+        "ram_used_pct": clean_val("PY_RAM_PCT", "0%"),
+        "swap_total": clean_val("PY_SWAP_TOTAL"),
+        "swap_used": clean_val("PY_SWAP_USED"),
+        "swap_used_pct": clean_val("PY_SWAP_PCT", "0%")
     },
     "services": {
-        "sshd": "${sshd_st}",
-        "docker": "${docker_st}",
-        "nginx": "${nginx_st}",
-        "chronyd": "${chrony_st}",
-        "multipathd": "${multi_st}"
+        "sshd": clean_val("PY_SSHD"),
+        "docker": clean_val("PY_DOCKER"),
+        "nginx": clean_val("PY_NGINX"),
+        "chronyd": clean_val("PY_CHRONYD"),
+        "multipathd": clean_val("PY_MULTIPATHD")
     },
     "network": {
         "ip_addresses": get_ips(),
         "routes": get_routes()
     },
     "security": {
-        "selinux": "${selinux_status}",
-        "ntp": "${ntp_status}"
+        "selinux": clean_val("PY_SELINUX", "Disabled"),
+        "ntp": clean_val("PY_NTP", "Not Synchronized")
     }
 }
 
