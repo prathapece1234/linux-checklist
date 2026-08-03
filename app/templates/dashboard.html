@@ -1,0 +1,75 @@
+{% extends "layout.html" %}
+
+{% block title %}Dashboard - Enterprise Linux Health Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h2>Server Health Overview</h2>
+    <div class="stats-bar">
+        <div class="stat-card">
+            <div class="stat-number">{{ total_servers }}</div>
+            <div class="stat-label">Total Servers</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ total_reports }}</div>
+            <div class="stat-label">Total Reports</div>
+        </div>
+    </div>
+</div>
+
+<div class="search-bar">
+    <input type="text" id="searchInput" placeholder="&#x1F50D; Search servers by hostname, OS, or IP..." onkeyup="filterCards()">
+</div>
+
+{% if hosts %}
+<div class="server-grid" id="serverGrid">
+    {% for host in hosts %}
+    <div class="server-card" data-search="{{ host.hostname|lower }} {{ host.os|lower }} {{ host.ip|lower }}">
+        <div class="card-header">
+            <div class="card-hostname">{{ host.hostname }}</div>
+            <span class="badge badge-completed">{{ host.status }}</span>
+        </div>
+        <div class="card-body">
+            <div class="card-info-row">
+                <span class="card-label">OS:</span>
+                <span class="card-value">{{ host.os }}</span>
+            </div>
+            <div class="card-info-row">
+                <span class="card-label">Kernel:</span>
+                <span class="card-value card-value-mono">{{ host.kernel }}</span>
+            </div>
+            <div class="card-info-row">
+                <span class="card-label">IP:</span>
+                <span class="card-value">{{ host.ip }}</span>
+            </div>
+            <div class="card-info-row">
+                <span class="card-label">Last Scan:</span>
+                <span class="card-value">{{ host.last_scan }}</span>
+            </div>
+            <div class="card-info-row">
+                <span class="card-label">Reports:</span>
+                <span class="card-value">{{ host.report_count }} HTML &middot; {{ host.json_count }} JSON</span>
+            </div>
+        </div>
+        <div class="card-actions">
+            <a href="{{ url_for('report.view_latest', hostname=host.dirname) }}" class="btn btn-sm btn-primary">View Report</a>
+            <a href="{{ url_for('report.history', hostname=host.dirname) }}" class="btn btn-sm btn-secondary">History</a>
+            {% if host.json_count >= 2 %}
+            <a href="{{ url_for('compare.compare_page', hostname=host.dirname) }}" class="btn btn-sm btn-compare">Compare</a>
+            {% elif host.json_count == 1 %}
+            <span class="btn btn-sm btn-disabled" title="Need at least 2 JSON reports to compare">Compare</span>
+            {% else %}
+            <span class="btn btn-sm btn-disabled" title="No JSON reports available">Compare</span>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="empty-icon">&#x1F4E1;</div>
+    <h3>No Reports Yet</h3>
+    <p>Run <code>health_check.sh</code> on your production servers to start collecting health reports.</p>
+</div>
+{% endif %}
+{% endblock %}

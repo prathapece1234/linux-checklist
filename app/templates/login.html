@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Enterprise Linux Health Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="login-body">
+    <div class="login-wrapper">
+        <div class="login-card">
+            <div class="login-header">
+                <div class="login-icon">&#x1F5A5;</div>
+                <h1>Enterprise Linux Health Dashboard</h1>
+                <p class="login-subtitle">Production Monitoring System</p>
+            </div>
+
+            {% if error %}
+            <div class="alert alert-error">
+                <span>&#x26A0;</span> {{ error }}
+            </div>
+            {% endif %}
+
+            {% if timeout %}
+            <div class="alert alert-warning">
+                <span>&#x23F0;</span> Session expired. Please log in again.
+            </div>
+            {% endif %}
+
+            <form method="POST" action="{{ url_for('auth.login') }}" class="login-form">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" placeholder="Enter your username" required autofocus autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" placeholder="Enter your password" required autocomplete="current-password">
+                </div>
+                <div class="form-group checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="remember_me"> Remember Me
+                    </label>
+                </div>
+                <button type="submit" class="btn btn-primary btn-full">Login</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,150 @@
+{% extends "layout.html" %}
+
+{% block title %}Compare - {{ hostname }} - Enterprise Linux Health Dashboard{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+    <a href="{{ url_for('dashboard.index') }}">Dashboard</a>
+    <span class="breadcrumb-sep">&rsaquo;</span>
+    <a href="{{ url_for('report.history', hostname=hostname) }}">{{ hostname }}</a>
+    <span class="breadcrumb-sep">&rsaquo;</span>
+    <span>Compare Reports</span>
+</div>
+
+<div class="page-header">
+    <h2>&#x1F50D; Compare Reports — {{ hostname }}</h2>
+    <p class="page-subtitle">Select two JSON reports to compare before and after activity</p>
+</div>
+
+<!-- Report Selector Form -->
+<div class="compare-selector">
+    <form method="POST" action="{{ url_for('compare.run_comparison', hostname=hostname) }}" class="compare-form">
+        <div class="selector-row">
+            <div class="selector-group">
+                <label for="report_old">Previous Report (Before Activity)</label>
+                <select name="report_old" id="report_old" required>
+                    <option value="">-- Select Previous Report --</option>
+                    {% for r in json_reports %}
+                    <option value="{{ r.filename }}" {% if report_old is defined and report_old == r.filename %}selected{% endif %}>
+                        {{ r.mtime_str }} — {{ r.filename }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="selector-arrow">&#x27A1;</div>
+            <div class="selector-group">
+                <label for="report_new">Current Report (After Activity)</label>
+                <select name="report_new" id="report_new" required>
+                    <option value="">-- Select Current Report --</option>
+                    {% for r in json_reports %}
+                    <option value="{{ r.filename }}" {% if report_new is defined and report_new == r.filename %}selected{% endif %}>
+                        {{ r.mtime_str }} — {{ r.filename }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="selector-actions">
+            <button type="submit" class="btn btn-primary">&#x1F50D; Compare Reports</button>
+        </div>
+    </form>
+</div>
+
+{% if results %}
+<!-- Comparison Summary -->
+<div class="compare-summary">
+    <div class="summary-header">
+        <h3>Comparison Summary</h3>
+    </div>
+    <div class="summary-cards">
+        <div class="summary-card">
+            <div class="summary-label">Previous Report</div>
+            <div class="summary-value mono">{{ report_old }}</div>
+        </div>
+        <div class="summary-card summary-arrow">&#x27A1;</div>
+        <div class="summary-card">
+            <div class="summary-label">Current Report</div>
+            <div class="summary-value mono">{{ report_new }}</div>
+        </div>
+    </div>
+    <div class="summary-stats">
+        <div class="stat-pill">
+            <span class="stat-pill-label">Total Checks</span>
+            <span class="stat-pill-value">{{ summary.total }}</span>
+        </div>
+        <div class="stat-pill stat-pass">
+            <span class="stat-pill-label">PASS</span>
+            <span class="stat-pill-value">{{ summary.PASS }}</span>
+        </div>
+        <div class="stat-pill stat-warning">
+            <span class="stat-pill-label">WARNING</span>
+            <span class="stat-pill-value">{{ summary.WARNING }}</span>
+        </div>
+        <div class="stat-pill stat-fail">
+            <span class="stat-pill-label">FAIL</span>
+            <span class="stat-pill-value">{{ summary.FAIL }}</span>
+        </div>
+        <div class="stat-pill stat-info">
+            <span class="stat-pill-label">INFO</span>
+            <span class="stat-pill-value">{{ summary.INFO }}</span>
+        </div>
+        <div class="stat-pill">
+            <span class="stat-pill-label">Changes</span>
+            <span class="stat-pill-value">{{ summary.changes }}</span>
+        </div>
+        <div class="stat-pill stat-{{ summary.overall|lower }}">
+            <span class="stat-pill-label">Overall</span>
+            <span class="stat-pill-value">{{ summary.overall }}</span>
+        </div>
+    </div>
+</div>
+
+<!-- Category Comparison Tables -->
+{% for category, items in results.items() %}
+<div class="compare-category">
+    <div class="category-header">
+        <h3>{{ category }}</h3>
+        <span class="category-count">{{ items|length }} checks</span>
+    </div>
+    <div class="table-responsive">
+        <table class="data-table compare-table">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Previous Value</th>
+                    <th>Current Value</th>
+                    <th>Difference</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr class="status-row-{{ item.status|lower }}">
+                    <td class="item-name">{{ item.item }}</td>
+                    <td class="value-cell"><pre class="inline-pre">{{ item.previous }}</pre></td>
+                    <td class="value-cell"><pre class="inline-pre">{{ item.current }}</pre></td>
+                    <td class="diff-cell">{{ item.difference }}</td>
+                    <td class="status-cell">
+                        <span class="status-badge status-{{ item.status|lower }}">{{ item.status }}</span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endfor %}
+
+{% elif json_reports|length < 2 %}
+<div class="empty-state">
+    <div class="empty-icon">&#x1F4CA;</div>
+    <h3>Insufficient Reports</h3>
+    <p>At least 2 JSON reports are required for comparison. Currently {{ json_reports|length }} available.</p>
+    <p>Run <code>health_check.sh</code> on the server to generate JSON reports.</p>
+</div>
+{% endif %}
+
+<div class="back-link">
+    <a href="{{ url_for('dashboard.index') }}" class="btn btn-sm btn-primary">&#x2190; Back to Dashboard</a>
+</div>
+{% endblock %}

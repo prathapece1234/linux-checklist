@@ -1,0 +1,57 @@
+{% extends "layout.html" %}
+
+{% block title %}History - {{ hostname }} - Enterprise Linux Health Dashboard{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+    <a href="{{ url_for('dashboard.index') }}">Dashboard</a>
+    <span class="breadcrumb-sep">&rsaquo;</span>
+    <span>{{ hostname }}</span>
+    <span class="breadcrumb-sep">&rsaquo;</span>
+    <span>History</span>
+</div>
+
+<div class="page-header">
+    <h2>&#x1F4C2; Report History — {{ hostname }}</h2>
+    <p class="page-subtitle">{{ reports|length }} reports available</p>
+</div>
+
+{% if reports %}
+<div class="table-responsive">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Timestamp</th>
+                <th>Filename</th>
+                <th>Size</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for report in reports %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ report.mtime_str }}</td>
+                <td class="mono">{{ report.filename }}</td>
+                <td>{{ report.size_kb }} KB</td>
+                <td class="actions-cell">
+                    <a href="{{ url_for('report.view_report', hostname=hostname, filename=report.filename) }}" class="btn btn-xs btn-primary">Open</a>
+                    <a href="{{ url_for('report.download_report', hostname=hostname, filename=report.filename) }}" class="btn btn-xs btn-secondary">Download</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <h3>No Reports Found</h3>
+    <p>No health check reports are available for this server.</p>
+</div>
+{% endif %}
+
+<div class="back-link">
+    <a href="{{ url_for('dashboard.index') }}" class="btn btn-sm btn-primary">&#x2190; Back to Dashboard</a>
+</div>
+{% endblock %}

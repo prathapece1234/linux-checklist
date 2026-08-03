@@ -1,59 +1,53 @@
 # Enterprise Linux Health Dashboard
 
-Production-ready enterprise Linux server health monitoring and reporting system designed for air-gapped private network environments and production gateway servers (e.g. OpsRamp Gateway, RHEL, Ubuntu).
+Dynamic enterprise Linux server health monitoring, reporting, and report comparison system built with **Flask**, **Gunicorn**, and **Nginx Reverse Proxy**.
+
+Designed for production Linux environments (OpsRamp Gateway, RHEL 6–10, Ubuntu 18–24, Amazon Linux).
 
 ## Architecture
 
 ```
-Production Linux Servers (RHEL 6-10, Ubuntu 18-24)
+Production Client Nodes (RHEL 6-10, Ubuntu, Amazon Linux)
         │
         ▼
    health_check.sh (Single standalone script on client nodes)
         │
         ├──► HealthCheck_hostname_date.txt
-        └──► HealthCheck_hostname_date.html
+        ├──► HealthCheck_hostname_date.html
+        └──► HealthCheck_hostname_date.json
                 │
                 ▼ (curl POST upload)
-        Flask Upload API (:5000/upload)
-            └─► Running in Venv (/opt/health-dashboard/venv)
-            └─► Executed by unprivileged user (healthdashboard)
+        Upload API (/upload - Unauthenticated)
                 │
                 ▼
         Store in /var/www/html/health-reports/<hostname>/
                 │
                 ▼
-        generate_dashboard.py (Auto rebuild index.html)
-                │
-                ▼
-        Nginx Web Server (:8088)
+   Dynamic Flask Web Application (Gunicorn :5000) ◄── Nginx Reverse Proxy (:8088)
+        ├── Session-Based Authentication (login/logout)
+        ├── Dynamic Server Cards Dashboard
+        ├── Report Viewer & History
+        └── Before vs After Activity Report Comparison (JSON diff)
 ```
 
-## Production & Security Specifications
+## Features
 
-1. **Python Virtual Environment**:
-   - Flask API runs exclusively inside `/opt/health-dashboard/venv` (no global pip modifications).
-2. **Dedicated Unprivileged Service Account**:
-   - Runs under dedicated system account `healthdashboard:healthdashboard` (never root).
-3. **Zero Production Traffic Disruption**:
-   - Uses `nginx -t && systemctl reload nginx` (never restarts Nginx).
-   - Only installs missing packages without reinstalling existing ones.
-4. **Strict Pre-Installation Port Checks**:
-   - Immediately aborts installation if port `5000` or `8088` is occupied to prevent service conflicts.
-5. **Systemd Security Hardening**:
-   - Enforces `NoNewPrivileges=true`, `PrivateTmp=true`, `ProtectSystem=full`, and `ProtectHome=true`.
-6. **Strict Permissions**:
-   - `755` for directories, `644` for files, owned by `healthdashboard`. No `777` permissions.
-7. **Validation Matrix**:
-   - Post-install automated health check matrix verifying venv, service states, and HTTP endpoints with explicit `[PASS]` / `[FAIL]` status.
+- **Dynamic Flask Web App**: Zero static HTML generator overhead. Dashboard renders dynamically on demand.
+- **Session Authentication**: Flask session management with `werkzeug.security` hashed passwords (`users.json`). 30-minute timeout & "Remember Me" support.
+- **Report Comparison Engine**: Select any two reports (Before vs After activity) for a server and instantly compare System, Storage (filesystems & mount points), Memory (RAM & Swap), Services, Network (IPs & `route -n` routes), and Security (SELinux & NTP) with color-coded PASS/WARNING/FAIL/INFO indicators.
+- **User Management Utility**: `manage-users.sh` interactive CLI tool to list, add, delete users, and change passwords.
+- **Gunicorn Production Deployment**: Runs behind Nginx reverse proxy with systemd security hardening (`NoNewPrivileges`, `PrivateTmp`, `ProtectSystem`).
+- **Backward Compatible**: Existing client agents (`health_check.sh`) continue uploading without authentication or breaking changes.
 
 ## Supported Operating Systems
 - RHEL 6 / 7 / 8 / 9 / 10
 - Ubuntu 18.04 / 20.04 / 22.04 / 24.04
+- Amazon Linux
 
 ## Quick Start Guide
 
-### 1. Central Monitoring Server Installation
-On the central server:
+### 1. Central Server Installation
+On the central monitoring server:
 ```bash
 git clone https://github.com/Prathaps8675/linux-checklist.git linux-health-dashboard
 cd linux-health-dashboard
@@ -61,8 +55,14 @@ chmod +x install.sh
 sudo ./install.sh
 ```
 
-### 2. Client Node Setup (Only 1 Script Needed!)
-On any production Linux server:
+### 2. User Management CLI
+To manage dashboard users (add, delete, change passwords):
+```bash
+sudo /opt/health-dashboard/manage-users.sh
+```
+
+### 3. Client Node Setup (Only 1 Script Needed!)
+On any production Linux node:
 1. Copy **only** `health_check.sh`.
 2. Edit `REPORT_SERVER` at the top of `health_check.sh`:
    ```bash

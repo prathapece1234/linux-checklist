@@ -535,6 +535,7 @@ CURRENT_NPROC=$(nproc 2>/dev/null || echo "1")
 
 TXT_REPORT="${REPORT_DIR}/${REPORT_PREFIX}_${CURRENT_HOSTNAME}_${CURRENT_DATE}.txt"
 HTML_REPORT="${REPORT_DIR}/${REPORT_PREFIX}_${CURRENT_HOSTNAME}_${CURRENT_DATE}.html"
+JSON_REPORT="${REPORT_DIR}/${REPORT_PREFIX}_${CURRENT_HOSTNAME}_${CURRENT_DATE}.json"
 
 echo "============================================================"
 echo " Enterprise Linux Health Check"
@@ -871,50 +872,126 @@ html_section_close
 # FINALIZE REPORT
 html_report_end
 
+# GENERATE JSON REPORT FOR DASHBOARD COMPARISON
+generate_json_report() {
+    local ram_total ram_used ram_pct swap_total swap_used swap_pct
+    ram_total=$(free -h 2>/dev/null | awk '/^Mem:/{print $2}')
+    ram_used=$(free -h 2>/dev/null | awk '/^Mem:/{print $3}')
+    ram_pct=$(free 2>/dev/null | awk '/^Mem:/{if($2>0) printf "%.1f%%", ($3/$2)*100; else print "0%"}')
+
+    swap_total=$(free -h 2>/dev/null | awk '/^Swap:/{print $2}')
+    swap_used=$(free -h 2>/dev/null | awk '/^Swap:/{print $3}')
+    swap_pct=$(free 2>/dev/null | awk '/^Swap:/{if($2>0) printf "%.1f%%", ($3/$2)*100; else print "0%"}')
+
+    local selinux_status="N/A"
+    if command -v sestatus >/dev/null 2>&1; then
+        selinux_status=$(sestatus 2>/dev/null | awk -F: '/Current mode:/{gsub(/[ \t]/, "", $2); print $2}')
+    fi
+
+    local ntp_status="Not Synchronized"
+    if command -v timedatectl >/dev/null 2>&1; then
+        if timedatectl 2>/dev/null | grep -qi "NTP service: active\|System clock synchronized: yes"; then
+            ntp_status="Synchronized"
+        fi
+    fi
+
+    cat << EOF > "$JSON_REPORT"
+{
+  "system": {
+    "hostname": "${CURRENT_HOSTNAME}",
+    "fqdn": "${CURRENT_FQDN}",
+    "ip": "${CURRENT_IP}",
+    "os": "${OS_FULL}",
+    "kernel": "${CURRENT_KERNEL}",
+    "cpu_cores": "${CURRENT_NPROC}",
+    "ram_total": "${ram_total:-N/A}",
+    "uptime": "${CURRENT_UPTIME}"
+  },
+  "storage": {
+    "filesystems": [
+$(df -P -h 2>/dev/null | awk 'NR>1 {printf "      {\"filesystem\":\"%s\",\"size\":\"%s\",\"used\":\"%s\",\"avail\":\"%s\",\"use_pct\":\"%s\",\"mount\":\"%s\"},\n", $1,$2,$3,$4,$5,$6}' | sed '$ s/,$//')
+    ]
+  },
+  "memory": {
+    "ram_total": "${ram_total:-N/A}",
+    "ram_used": "${ram_used:-N/A}",
+    "ram_used_pct": "${ram_pct:-0%}",
+    "swap_total": "${swap_total:-N/A}",
+    "swap_used": "${swap_used:-N/A}",
+    "swap_used_pct": "${swap_pct:-0%}"
+  },
+  "services": {
+    "sshd": "$(check_service_status sshd | cut -d'|' -f1)",
+    "docker": "$(check_service_status docker | cut -d'|' -f1)",
+    "nginx": "$(check_service_status nginx | cut -d'|' -f1)",
+    "chronyd": "$(check_service_status chronyd | cut -d'|' -f1)",
+    "multipathd": "$(check_service_status multipathd | cut -d'|' -f1)"
+  },
+  "network": {
+    "ip_addresses": [
+$(ip -o addr show 2>/dev/null | awk '{printf "      \"%s %s\",\n", $2, $4}' | sed '$ s/,$//')
+    ],
+    "routes": [
+$(route -n 2>/dev/null | awk 'NR>2 {printf "      \"%s netmask %s gw %s dev %s\",\n", $1,$3,$2,$8}' | sed '$ s/,$//')
+    ]
+  },
+  "security": {
+    "selinux": "${selinux_status:-Disabled}",
+    "ntp": "${ntp_status}"
+  }
+}
+EOF
+}
+
+generate_json_report
+
 echo ""
 echo "Health check complete. Reports saved:"
 echo " TXT  : $TXT_REPORT"
 echo " HTML : $HTML_REPORT"
+echo " JSON : $JSON_REPORT"
 
 # AUTOMATIC UPLOAD VIA CURL
 echo ""
 echo "===================================================="
-echo "Uploading HTML report to central server..."
+echo "Uploading reports to central server..."
 echo "===================================================="
 
-if [ -f "$HTML_REPORT" ]; then
-    attempt=0
-    upload_success=false
+for RFILE in "$HTML_REPORT" "$JSON_REPORT"; do
+    if [ -f "$RFILE" ]; then
+        attempt=0
+        upload_success=false
 
-    while [ $attempt -lt "$UPLOAD_RETRIES" ]; do
-        attempt=$((attempt + 1))
-        echo "[INFO] Upload attempt ${attempt}/${UPLOAD_RETRIES} to ${UPLOAD_URL}..."
+        while [ $attempt -lt "$UPLOAD_RETRIES" ]; do
+            attempt=$((attempt + 1))
+            echo "[INFO] Uploading $(basename "$RFILE") (attempt ${attempt}/${UPLOAD_RETRIES}) to ${UPLOAD_URL}..."
 
-        RESPONSE=$(curl -s -w "\n%{http_code}" \
-            --connect-timeout "$UPLOAD_TIMEOUT" \
-            --max-time "$UPLOAD_TIMEOUT" \
-            -F "hostname=${CURRENT_HOSTNAME}" \
-            -F "file=@${HTML_REPORT}" \
-            "${UPLOAD_URL}" 2>&1)
+            RESPONSE=$(curl -s -w "\n%{http_code}" \
+                --connect-timeout "$UPLOAD_TIMEOUT" \
+                --max-time "$UPLOAD_TIMEOUT" \
+                -F "hostname=${CURRENT_HOSTNAME}" \
+                -F "file=@${RFILE}" \
+                "${UPLOAD_URL}" 2>&1)
 
-        HTTP_CODE=$(echo "$RESPONSE" | tail -1)
-        BODY=$(echo "$RESPONSE" | sed '$d')
+            HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+            BODY=$(echo "$RESPONSE" | sed '$d')
 
-        if [ "$HTTP_CODE" = "200" ] || echo "$BODY" | grep -qi "Upload Successful"; then
-            echo "[INFO] Report uploaded successfully."
-            upload_success=true
-            break
-        else
-            echo "[WARN] Upload failed (HTTP ${HTTP_CODE})"
-            if [ $attempt -lt "$UPLOAD_RETRIES" ]; then
-                sleep "$UPLOAD_RETRY_DELAY"
+            if [ "$HTTP_CODE" = "200" ] || echo "$BODY" | grep -qi "Upload Successful"; then
+                echo "[INFO] $(basename "$RFILE") uploaded successfully."
+                upload_success=true
+                break
+            else
+                echo "[WARN] Upload failed for $(basename "$RFILE") (HTTP ${HTTP_CODE})"
+                if [ $attempt -lt "$UPLOAD_RETRIES" ]; then
+                    sleep "$UPLOAD_RETRY_DELAY"
+                fi
             fi
-        fi
-    done
+        done
 
-    if [ "$upload_success" = false ]; then
-        echo "[ERROR] Upload failed after ${UPLOAD_RETRIES} attempts."
+        if [ "$upload_success" = false ]; then
+            echo "[ERROR] Upload failed for $(basename "$RFILE") after ${UPLOAD_RETRIES} attempts."
+        fi
     fi
-fi
+done
 
 exit 0
