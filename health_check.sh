@@ -253,18 +253,20 @@ HTMLMETA
         a { color: #4a6cf7; text-decoration: none; }
         a:hover { text-decoration: underline; }
 
+        html { scroll-behavior: smooth; }
+
         .top-nav {
             background: linear-gradient(90deg, #B71C1C 0%, #8E1720 20%, #1E1E24 45%, #183A6D 75%, #2563EB 100%);
             color: #ffffff;
-            min-height: 100px;
-            padding: 14px 30px;
+            min-height: 72px;
+            padding: 10px 30px;
             position: sticky;
             top: 0;
             z-index: 1000;
-            box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.22);
             backdrop-filter: blur(8px);
-            border-bottom-left-radius: 12px;
-            border-bottom-right-radius: 12px;
+            border-bottom-left-radius: 10px;
+            border-bottom-right-radius: 10px;
             display: flex;
             align-items: center;
         }
@@ -273,7 +275,7 @@ HTMLMETA
             margin: 0 auto;
             width: 100%;
             display: grid;
-            grid-template-columns: 220px 1fr 220px;
+            grid-template-columns: 200px 1fr 200px;
             align-items: center;
         }
         .nav-left { display: flex; align-items: center; }
@@ -285,9 +287,9 @@ HTMLMETA
             background: #ffffff;
             color: #1f2937 !important;
             border: 2px solid #ef5350;
-            padding: 8px 18px;
+            padding: 6px 16px;
             border-radius: 8px;
-            font-size: 0.88em;
+            font-size: 0.85em;
             font-weight: 700;
             text-decoration: none !important;
             transition: all 0.25s ease;
@@ -304,44 +306,38 @@ HTMLMETA
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
+            gap: 8px;
         }
-        .report-title-icon { font-size: 1.5em; }
+        .report-title-icon { font-size: 1.3em; }
         .report-title-text {
-            font-size: 32px;
+            font-size: 24px;
             font-weight: 800;
             color: #ffffff;
             line-height: 1.2;
-            letter-spacing: -0.5px;
-        }
-        .title-accent-line {
-            height: 2px;
-            width: 60px;
-            background: #ef5350;
-            margin: 6px auto 8px;
-            border-radius: 1px;
+            letter-spacing: -0.4px;
         }
         .nav-meta-row {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 12px;
-            flex-wrap: wrap;
-            font-size: 15px;
-            color: #e5e7eb;
+            gap: 14px;
+            font-size: 13.5px;
+            color: rgba(255, 255, 255, 0.85);
+            white-space: nowrap;
+            margin-top: 3px;
         }
         .nav-meta-item strong { color: #ffffff; font-weight: 700; }
-        .meta-separator { color: rgba(255,255,255,0.4); font-weight: 300; }
+        .meta-dot { color: rgba(255, 255, 255, 0.4); font-size: 0.9em; }
         .nav-right { width: 100%; }
 
-        .page-layout { display: flex; min-height: calc(100vh - 100px); }
+        .page-layout { display: flex; min-height: calc(100vh - 72px); }
 
         .sidebar {
             position: sticky;
-            top: 104px;
+            top: 76px;
             width: 240px;
             min-width: 240px;
-            height: calc(100vh - 104px);
+            height: calc(100vh - 76px);
             background: #fff;
             box-shadow: 2px 0 8px rgba(0,0,0,0.08);
             overflow-y: auto;
@@ -376,7 +372,10 @@ HTMLMETA
             max-width: calc(100% - 240px);
         }
 
-        .report-section { margin-bottom: 22px; }
+        .report-section {
+            scroll-margin-top: 90px;
+            margin-bottom: 22px;
+        }
         .section-header {
             background: #fff;
             padding: 14px 20px;
@@ -426,8 +425,9 @@ HTMLMETA
         .page-footer { text-align: center; padding: 25px; color: #888; font-size: 0.85em; background: #fff; border-top: 1px solid #eee; margin-top: 20px; }
 
         @media (max-width: 992px) {
-            .top-nav .nav-content { grid-template-columns: 1fr; gap: 12px; text-align: center; }
+            .top-nav .nav-content { grid-template-columns: 1fr; gap: 8px; text-align: center; }
             .nav-left { justify-content: center; }
+            .nav-meta-row { flex-wrap: wrap; }
             .sidebar { display: none; }
             .main-content { max-width: 100%; padding: 20px 15px; }
         }
@@ -447,16 +447,13 @@ HTMLSTYLE
                     <span class="report-title-icon">&#x1F5A5;</span>
                     <h1 class="report-title-text">Linux Health Check Report</h1>
                 </div>
-                <div class="title-accent-line"></div>
                 <div class="nav-meta-row">
                     <span class="nav-meta-item"><strong>Host:</strong> ${hostname_val}</span>
-                    <span class="meta-separator">|</span>
+                    <span class="meta-dot">&bull;</span>
                     <span class="nav-meta-item"><strong>OS:</strong> ${os_info}</span>
-                    <span class="meta-separator">|</span>
-                    <span class="nav-meta-item"><strong>Kernel:</strong> ${kernel}</span>
-                    <span class="meta-separator">|</span>
+                    <span class="meta-dot">&bull;</span>
                     <span class="nav-meta-item"><strong>IP:</strong> ${ip_addr}</span>
-                    <span class="meta-separator">|</span>
+                    <span class="meta-dot">&bull;</span>
                     <span class="nav-meta-item"><strong>Generated:</strong> ${report_date}</span>
                 </div>
             </div>
@@ -524,6 +521,30 @@ html_report_end() {
                 if (icon) icon.classList.add('collapsed');
             }
         };
+
+        // Smooth scroll positioning for sidebar links stopping 90px below fixed header
+        document.addEventListener('DOMContentLoaded', function() {
+            var links = document.querySelectorAll('.side-nav a[href^="#"]');
+            links.forEach(function(anchor) {
+                anchor.addEventListener('click', function(e) {
+                    var href = this.getAttribute('href');
+                    if (href && href.length > 1) {
+                        var targetId = href.substring(1);
+                        var targetEl = document.getElementById(targetId);
+                        if (targetEl) {
+                            e.preventDefault();
+                            var headerOffset = 90;
+                            var elementPosition = targetEl.getBoundingClientRect().top;
+                            var offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+                            window.scrollTo({
+                                top: offsetPosition,
+                                behavior: 'smooth'
+                            });
+                        }
+                    }
+                });
+            });
+        });
     })();
     </script>
 </body>
