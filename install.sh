@@ -206,10 +206,18 @@ echo "[Step 5/10] Copying Application Files & Applying Scoped Security Permissio
 
 cp -r "${SCRIPT_DIR}/upload/"* "${APP_DIR}/upload/"
 cp -r "${SCRIPT_DIR}/templates/"* "${APP_DIR}/templates/"
+# Install Dashboard User Management Utility
+if [ -f "${SCRIPT_DIR}/manage-users.sh" ]; then
+    cp "${SCRIPT_DIR}/manage-users.sh" "${APP_DIR}/manage-users.sh"
+fi
 
 chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "${APP_DIR}"
 chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "${WEB_ROOT}"
 chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "${LOG_DIR}"
+# manage-users.sh should only be executable by root
+if [ -f "${APP_DIR}/manage-users.sh" ]; then
+    chown root:root "${APP_DIR}/manage-users.sh"
+fi
 
 # Apply permissions ONLY to upload and templates (Do NOT modify /opt/health-dashboard/venv permissions)
 find "${APP_DIR}/upload" -type d -exec chmod 755 {} +
@@ -218,29 +226,148 @@ find "${APP_DIR}/templates" -type d -exec chmod 755 {} +
 find "${APP_DIR}/templates" -type f -exec chmod 644 {} +
 
 chmod 755 "${APP_DIR}/upload/upload.py" "${APP_DIR}/upload/generate_dashboard.py"
-
+if [ -f "${APP_DIR}/manage-users.sh" ]; then
+    chmod 750 "${APP_DIR}/manage-users.sh"
+fi
 find "${WEB_ROOT}" -type d -exec chmod 755 {} +
 find "${WEB_ROOT}" -type f -exec chmod 644 {} +
+# =============================================================================
+# 5 (a). OPTIONAL DASHBOARD AUTHENTICATION
+# =============================================================================
+echo ""
+echo "[Step 6/11] Dashboard Authentication Configuration..."
+echo "------------------------------------------------------------"
+
+ENABLE_AUTH="NO"
+
+while true; do
+
+    read -rp "Enable Dashboard Authentication? (Y/N): " AUTH_CHOICE
+
+    case "${AUTH_CHOICE^^}" in
+
+        Y|YES)
+
+            ENABLE_AUTH="YES"
+
+            echo ""
+            read -rp "Dashboard Username : " DASH_USER
+
+            while true; do
+
+                read -rsp "Dashboard Password : " DASH_PASS
+                echo
+                read -rsp "Confirm Password  : " DASH_PASS2
+                echo
+
+                if [ "$DASH_PASS" = "$DASH_PASS2" ]; then
+                    break
+                fi
+
+                echo "[ERROR] Passwords do not match. Please try again."
+
+            done
+
+            # Install htpasswd utility if missing
+            if ! command -v htpasswd >/dev/null 2>&1; then
+
+                echo "[INFO] Installing htpasswd utility..."
+
+                if command -v apt-get >/dev/null 2>&1; then
+                    apt-get update -y
+                    apt-get install -y apache2-utils
+                elif command -v dnf >/dev/null 2>&1; then
+                    dnf install -y httpd-tools
+                else
+                    yum install -y httpd-tools
+                fi
+
+            fi
+
+            # Create password file
+            echo "${DASH_PASS}" | htpasswd -ci /etc/nginx/.htpasswd "${DASH_USER}" >/dev/null
+
+            echo "[INFO] Dashboard authentication ENABLED."
+            echo
+	    echo "====================================================="
+	    echo "Dashboard User Management Utility Installed"
+	    echo "====================================================="
+	    echo
+	    echo "To manage dashboard users later, run:"
+	    echo
+	    echo "sudo ${APP_DIR}/manage-users.sh"
+	    echo
+
+            break
+            ;;
+
+        N|NO)
+
+            ENABLE_AUTH="NO"
+
+            echo "[INFO] Dashboard authentication DISABLED."
+
+            break
+            ;;
+
+        *)
+
+            echo "Please enter Y or N."
+
+            ;;
+
+    esac
+
+done
 
 # =============================================================================
 # 6. NGINX CONFIGURATION & VALIDATION
 # =============================================================================
 echo ""
-echo "[Step 6/10] Deploying Nginx Site Configuration..."
+echo "[Step 7/11] Deploying Nginx Site Configuration..."
 
+# Select appropriate Nginx configuration
+if [ "$ENABLE_AUTH" = "YES" ]; then
+    echo "[INFO] Deploying authenticated dashboard configuration..."
+    NGINX_CONFIG="health-dashboard-auth.conf"
+else
+    echo "[INFO] Deploying standard dashboard configuration..."
+    NGINX_CONFIG="health-dashboard.conf"
+fi
+
+# Copy configuration
 if [ -d /etc/nginx/conf.d ]; then
-    cp "${SCRIPT_DIR}/nginx/health-dashboard.conf" /etc/nginx/conf.d/health-dashboard.conf
+
+    cp "${SCRIPT_DIR}/nginx/${NGINX_CONFIG}" \
+       /etc/nginx/conf.d/health-dashboard.conf
+
 elif [ -d /etc/nginx/sites-available ]; then
-    cp "${SCRIPT_DIR}/nginx/health-dashboard.conf" /etc/nginx/sites-available/health-dashboard.conf
-    ln -sf /etc/nginx/sites-available/health-dashboard.conf /etc/nginx/sites-enabled/health-dashboard.conf
+
+    cp "${SCRIPT_DIR}/nginx/${NGINX_CONFIG}" \
+       /etc/nginx/sites-available/health-dashboard.conf
+
+    ln -sf \
+        /etc/nginx/sites-available/health-dashboard.conf \
+        /etc/nginx/sites-enabled/health-dashboard.conf
+
+else
+
+    echo "[FATAL ERROR] Unable to locate Nginx configuration directory."
+    exit 1
+
 fi
 
 echo "[INFO] Validating Nginx configuration syntax (nginx -t)..."
+
 if ! nginx -t; then
+
     echo "[FATAL ERROR] Nginx configuration validation failed!"
-    echo "              Installation STOPPED immediately."
+    echo "Installation STOPPED."
+
     exit 1
+
 fi
+
 echo "[INFO] Nginx syntax check passed successfully."
 
 # =============================================================================
@@ -466,6 +593,15 @@ printf " %-35s Status: [%s]\n" "Upload API Port (${API_PORT})" "$VAL_PORT_API"
 echo "------------------------------------------------------------"
 printf " %-35s STATUS: [%s]\n" "OVERALL INSTALLATION" "$VAL_OVERALL"
 echo "============================================================"
+
+echo "------------------------------------------------------------"
+
+if [ "$ENABLE_AUTH" = "YES" ]; then
+    echo "Dashboard Authentication : ENABLED"
+    echo "Dashboard Username       : ${DASH_USER}"
+else
+    echo "Dashboard Authentication : DISABLED"
+fi
 
 if [ "$VAL_OVERALL" = "PASS" ]; then
     echo "[SUCCESS] Installation completed successfully with zero issues."
