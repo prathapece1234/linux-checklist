@@ -1133,7 +1133,7 @@ def get_ips():
 def get_routes():
     routes = []
     try:
-        out = subprocess.check_output("route -n 2>/dev/null || ip route 2>/dev/null", shell=True, text=True)
+        out = subprocess.check_output("ip route show 2>/dev/null || ip route 2>/dev/null || route -n 2>/dev/null", shell=True, text=True)
         lines = out.strip().split('\n')
         for line in lines:
             line_str = line.strip()

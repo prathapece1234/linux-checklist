@@ -239,13 +239,16 @@ def compare_services(old, new):
         norm_old = normalize_service_status(raw_old)
         norm_new = normalize_service_status(raw_new)
 
-        # Non-running states (e.g. Stopped vs Not Installed or Stopped vs Stopped) are NOT configuration drift!
-        non_running = ("Stopped", "Not Installed")
-        if norm_old in non_running and norm_new in non_running:
+        # Omit services that are Not Installed in BOTH reports to eliminate clutter
+        if norm_old == "Not Installed" and norm_new == "Not Installed":
+            continue
+
+        # If both are Stopped -> NO_CHANGE (is_drift = False)
+        if norm_old == "Stopped" and norm_new == "Stopped":
             results.append({
                 "item": f"Service: {svc}",
-                "previous": norm_old,
-                "current": norm_new,
+                "previous": "Stopped",
+                "current": "Stopped",
                 "status": "NO_CHANGE",
                 "is_drift": False,
                 "type": "text",
@@ -273,7 +276,7 @@ def compare_services(old, new):
 
 
 def compare_network(old, new):
-    """Compare Network configuration (IP Addresses & Full Route Table)."""
+    """Compare Network configuration (IP Addresses & Full Route Table via ip route show)."""
     results = []
     net_old = old.get("network", {})
     net_new = new.get("network", {})
@@ -299,7 +302,7 @@ def compare_network(old, new):
     route_changed = old_routes_str != new_routes_str
 
     results.append({
-        "item": "Network Routing Table (route -n)",
+        "item": "Network Routing Table (ip route show)",
         "previous": old_routes_str,
         "current": new_routes_str,
         "status": "CHANGED" if route_changed else "NO_CHANGE",
