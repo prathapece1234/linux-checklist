@@ -1,6 +1,6 @@
 """
 Report blueprint — Report viewer and history.
-Serves individual health check reports and lists report history per host.
+Serves individual health check reports as full pages and lists report history per host.
 """
 
 import os
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 @report_bp.route("/report/<hostname>")
 def view_latest(hostname):
-    """View the latest report for a hostname."""
+    """View the latest HTML report for a hostname as a full page."""
     host_dir = os.path.join(Config.WEB_ROOT, hostname)
     if not os.path.isdir(host_dir):
         abort(404)
@@ -32,39 +32,18 @@ def view_latest(hostname):
     if not reports:
         abort(404)
 
-    return render_template(
-        "report.html",
-        hostname=hostname,
-        filename=reports[0],
-        user=session.get("user"),
-        auth_enabled=Config.AUTH_ENABLED,
-    )
+    return send_from_directory(host_dir, reports[0])
 
 
 @report_bp.route("/report/<hostname>/<filename>")
 def view_report(hostname, filename):
-    """View a specific report for a hostname."""
+    """View a specific HTML report for a hostname as a full page."""
     host_dir = os.path.join(Config.WEB_ROOT, hostname)
     filepath = os.path.join(host_dir, filename)
 
     if not os.path.isfile(filepath):
         abort(404)
 
-    return render_template(
-        "report.html",
-        hostname=hostname,
-        filename=filename,
-        user=session.get("user"),
-        auth_enabled=Config.AUTH_ENABLED,
-    )
-
-
-@report_bp.route("/reports/<hostname>/<filename>")
-def serve_report_file(hostname, filename):
-    """Serve the raw HTML report file (used by iframe)."""
-    host_dir = os.path.join(Config.WEB_ROOT, hostname)
-    if not os.path.isdir(host_dir):
-        abort(404)
     return send_from_directory(host_dir, filename)
 
 

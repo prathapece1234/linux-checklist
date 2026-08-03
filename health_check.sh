@@ -377,7 +377,10 @@ HTMLSTYLE
     cat >> "$HTML_REPORT" << HTMLNAV
     <nav class="top-nav">
         <div class="nav-content">
-            <div><h1>&#x1F5A5; Linux Health Check Report</h1></div>
+            <div style="display:flex;align-items:center;gap:15px;">
+                <a href="/" style="background:rgba(255,255,255,0.18);color:#fff;padding:6px 16px;border-radius:6px;font-size:0.85em;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">&larr; Back to Dashboard</a>
+                <h1>&#x1F5A5; Linux Health Check Report</h1>
+            </div>
             <div class="nav-meta">
                 <div class="nav-meta-item"><span class="nav-meta-label">Host:</span><span>${hostname_val}</span></div>
                 <div class="nav-meta-item"><span class="nav-meta-label">IP:</span><span>${ip_addr}</span></div>
