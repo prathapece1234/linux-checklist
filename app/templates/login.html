@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Enterprise Linux Health Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body class="login-page-body">
     <div class="login-split-container">
@@ -15,9 +16,9 @@
             <!-- Vertically Centered Content Block -->
             <div class="left-content-center">
                 
-                <!-- Linux Brand Header -->
+                <!-- Linux Tux Logo Header -->
                 <div class="left-brand-header">
-                    <img src="{{ url_for('static', filename='images/app_logo.svg') }}" alt="Enterprise Linux Health Logo" class="left-brand-tux">
+                    <img src="{{ url_for('static', filename='images/linux_logo.png') }}" alt="Enterprise Linux Tux Logo" class="left-brand-tux">
                     <div class="left-brand-title">
                         <h1>Enterprise Linux Health Dashboard</h1>
                         <p>Centralized Linux Infrastructure Monitoring Platform</p>
@@ -29,7 +30,7 @@
                     <!-- Card 1 -->
                     <div class="feature-card-item">
                         <div class="feature-icon-box">
-                            <i data-lucide="file-check-2" style="width:24px;height:24px;color:#C1121F;"></i>
+                            <i data-lucide="clipboard-check" style="width:24px;height:24px;color:#C1121F;"></i>
                         </div>
                         <div class="feature-card-content">
                             <h3>Automated Health Checklist Collection</h3>
@@ -40,7 +41,9 @@
                     <!-- Card 2 -->
                     <div class="feature-card-item">
                         <div class="feature-icon-box">
-                            <i data-lucide="git-compare-arrows" style="width:24px;height:24px;color:#C1121F;"></i>
+                            <div class="feature-icon-inner">
+                                <i data-lucide="git-compare" style="width:24px;height:24px;color:#C1121F;"></i>
+                            </div>
                         </div>
                         <div class="feature-card-content">
                             <h3>Before & After Infrastructure Comparison</h3>
@@ -51,7 +54,7 @@
                     <!-- Card 3 -->
                     <div class="feature-card-item">
                         <div class="feature-icon-box">
-                            <i data-lucide="layout-dashboard" style="width:24px;height:24px;color:#C1121F;"></i>
+                            <i data-lucide="server" style="width:24px;height:24px;color:#C1121F;"></i>
                         </div>
                         <div class="feature-card-content">
                             <h3>Centralized Infrastructure Dashboard</h3>
@@ -77,7 +80,7 @@
 
                 <div class="login-card-header">
                     <div class="login-card-icon-enterprise">
-                        <img src="{{ url_for('static', filename='images/app_logo.svg') }}" alt="App Logo" style="width:48px;height:48px;object-fit:contain;">
+                        <i data-lucide="server-cog" style="width:34px;height:34px;color:#ffffff;"></i>
                     </div>
                     <h2>Enterprise Linux Health Dashboard</h2>
                     <p>Secure Enterprise Login</p>
