@@ -11,11 +11,14 @@
 <body>
     <nav class="top-nav">
         <div class="nav-content">
-            <div class="nav-brand">
+            <div class="nav-brand" style="display:flex;align-items:center;">
                 <a href="{{ url_for('dashboard.index') }}" style="display:flex;align-items:center;gap:12px;">
                     <img src="{{ url_for('static', filename='images/linux_logo.png') }}" alt="Linux Logo" style="width:28px;height:28px;border-radius:6px;object-fit:cover;">
                     <span>Enterprise Linux Health Dashboard</span>
                 </a>
+                <span class="client-badge">
+                    <i data-lucide="building-2" style="width:14px;height:14px;vertical-align:middle;"></i> Client: <strong>XCO - XIUS Central Office</strong>
+                </span>
             </div>
             <div class="nav-right">
                 {% if auth_enabled and user %}
