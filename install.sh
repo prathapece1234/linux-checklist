@@ -60,51 +60,47 @@ fi
 echo ""
 echo "[Step 1/11] Checking required ports and existing installation state..."
 
-is_our_service() {
+inspect_port() {
     local PORT="$1"
-    if ss -tulpn 2>/dev/null | grep -q ":${PORT}"; then
-        local PROCESS
-        PROCESS=$(ss -tulpn | grep ":${PORT}" | head -1)
-        if echo "$PROCESS" | grep -qiE "upload.py|health-dashboard|python|gunicorn|flask"; then
+    local SERVICE_NAME="$2"
+
+    if ss -tulpn 2>/dev/null | grep -q ":${PORT}\s"; then
+        local PROCESS_INFO
+        PROCESS_INFO=$(ss -tulpn 2>/dev/null | grep -E ":${PORT}\s" | head -1)
+
+        echo "[INFO] Port ${PORT} (${SERVICE_NAME}) is currently IN USE."
+        echo "       Running Process: ${PROCESS_INFO}"
+
+        if echo "$PROCESS_INFO" | grep -qiE "upload.py|health-dashboard|python|gunicorn|flask"; then
+            echo "[INFO] Recognized as existing Health Dashboard process."
             return 0
-        fi
-        if [ "$PORT" = "$DASHBOARD_PORT" ] && echo "$PROCESS" | grep -qi nginx; then
+        elif [ "$PORT" = "$DASHBOARD_PORT" ] && echo "$PROCESS_INFO" | grep -qi nginx; then
+            echo "[INFO] Recognized as existing Health Dashboard Nginx web server."
             return 0
+        else
+            echo ""
+            echo "[FATAL ERROR] Port ${PORT} (${SERVICE_NAME}) is occupied by a FOREIGN application!"
+            echo "              Process: ${PROCESS_INFO}"
+            echo ""
+            echo "[FATAL ERROR] Installation STOPPED immediately to prevent production service conflict."
+            echo "              Please stop the conflicting application or change the configured port."
+            exit 1
         fi
+    else
+        echo "[INFO] Port ${PORT} (${SERVICE_NAME}) is FREE."
+        return 1
     fi
-    return 1
 }
 
-is_foreign_process() {
-    local PORT="$1"
-    if ss -tulpn 2>/dev/null | grep -q ":${PORT}"; then
-        if ! is_our_service "$PORT"; then
-            return 0
-        fi
-    fi
-    return 1
-}
+echo "[INFO] Inspecting Port ${API_PORT} (Upload API)..."
+API_PORT_USED=$(inspect_port "$API_PORT" "Upload API" || echo "false")
 
-# Check for foreign application conflicts
-if is_foreign_process "$API_PORT"; then
-    echo ""
-    echo "[ERROR] Port ${API_PORT} is used by another application:"
-    ss -tulpn | grep ":${API_PORT}" | head -1
-    echo "Please change the configured port before continuing."
-    exit 1
-fi
-
-if is_foreign_process "$DASHBOARD_PORT"; then
-    echo ""
-    echo "[ERROR] Port ${DASHBOARD_PORT} is used by another application:"
-    ss -tulpn | grep ":${DASHBOARD_PORT}" | head -1
-    echo "Please change the configured port before continuing."
-    exit 1
-fi
+echo "[INFO] Inspecting Port ${DASHBOARD_PORT} (Dashboard)..."
+DASH_PORT_USED=$(inspect_port "$DASHBOARD_PORT" "Dashboard UI" || echo "false")
 
 # Check for existing installation
 EXISTING_FOUND=false
-if is_our_service "$API_PORT" || is_our_service "$DASHBOARD_PORT" || [ -d "$APP_DIR/app" ] || [ -f "/etc/systemd/system/health-dashboard.service" ] || [ -f "/etc/systemd/system/health-dashboard-api.service" ]; then
+if [ "$API_PORT_USED" != "false" ] || [ "$DASH_PORT_USED" != "false" ] || [ -d "$APP_DIR/app" ] || [ -f "/etc/systemd/system/health-dashboard.service" ] || [ -f "/etc/systemd/system/health-dashboard-api.service" ]; then
     EXISTING_FOUND=true
 fi
 
