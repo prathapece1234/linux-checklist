@@ -158,10 +158,22 @@
                     <td class="mono" style="font-weight:600;color:#202939;">{{ item.item }}</td>
                     
                     <!-- Previous Value Cell -->
-                    <td><span class="mono">{{ item.previous }}</span></td>
+                    <td>
+                        {% if item.type == 'multiline' %}
+                        <pre style="margin:0;font-family:monospace;white-space:pre-wrap;line-height:1.45;font-size:0.88em;color:#1e293b;">{{ item.previous }}</pre>
+                        {% else %}
+                        <span class="mono">{{ item.previous }}</span>
+                        {% endif %}
+                    </td>
 
                     <!-- Current Value Cell -->
-                    <td><span class="mono">{{ item.current }}</span></td>
+                    <td>
+                        {% if item.type == 'multiline' %}
+                        <pre style="margin:0;font-family:monospace;white-space:pre-wrap;line-height:1.45;font-size:0.88em;color:#1e293b;">{{ item.current }}</pre>
+                        {% else %}
+                        <span class="mono">{{ item.current }}</span>
+                        {% endif %}
+                    </td>
 
                     <!-- Status Cell -->
                     <td style="text-align:center;">

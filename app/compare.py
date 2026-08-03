@@ -131,7 +131,7 @@ def compare_system(old, new):
 
 
 def compare_storage(old, new):
-    """Compare Mount Point structure (Mount added, removed, or retained). Usage % is Info-only."""
+    """Compare Mount Point structure (Present vs Missing). Ignore usage % and available space."""
     results = []
     fs_old = {item["mount"]: item for item in old.get("storage", {}).get("filesystems", []) if "mount" in item}
     fs_new = {item["mount"]: item for item in new.get("storage", {}).get("filesystems", []) if "mount" in item}
@@ -145,8 +145,8 @@ def compare_storage(old, new):
         if old_entry and not new_entry:
             results.append({
                 "item": f"Mount Point {mount}",
-                "previous": f"{old_entry.get('filesystem', 'dev')} ({old_entry.get('size', 'N/A')})",
-                "current": "Mount Removed",
+                "previous": "Present",
+                "current": "Missing / Removed",
                 "status": "REMOVED",
                 "is_drift": True,
                 "type": "text",
@@ -154,19 +154,17 @@ def compare_storage(old, new):
         elif not old_entry and new_entry:
             results.append({
                 "item": f"Mount Point {mount}",
-                "previous": "Not Mounted",
-                "current": f"{new_entry.get('filesystem', 'dev')} ({new_entry.get('size', 'N/A')})",
+                "previous": "Not Present",
+                "current": "Present (New)",
                 "status": "ADDED",
                 "is_drift": True,
                 "type": "text",
             })
         else:
-            old_str = f"{old_entry.get('used', 'N/A')}/{old_entry.get('size', 'N/A')} ({old_entry.get('use_pct', '0%')})"
-            new_str = f"{new_entry.get('used', 'N/A')}/{new_entry.get('size', 'N/A')} ({new_entry.get('use_pct', '0%')})"
             results.append({
                 "item": f"Mount Point {mount}",
-                "previous": old_str,
-                "current": new_str,
+                "previous": "Present",
+                "current": "Present",
                 "status": "NO_CHANGE",
                 "is_drift": False,
                 "type": "text",
@@ -224,7 +222,7 @@ def normalize_service_status(st):
 
 
 def compare_services(old, new):
-    """Compare Service State (Running, Stopped, Failed, Not Installed). Ignore logs/timestamps."""
+    """Compare Service State (Running, Stopped, Failed, Not Installed). Ignore logs/timestamps/PIDs."""
     results = []
     svc_old = old.get("services", {})
     svc_new = new.get("services", {})
@@ -243,17 +241,17 @@ def compare_services(old, new):
         if norm_old == "Not Installed" and norm_new == "Not Installed":
             continue
 
-        # If both are Stopped -> NO_CHANGE (is_drift = False)
-        if norm_old == "Stopped" and norm_new == "Stopped":
+        # Running -> Running or Stopped -> Stopped = NO_CHANGE (is_drift = False)
+        if norm_old == norm_new:
             results.append({
                 "item": f"Service: {svc}",
-                "previous": "Stopped",
-                "current": "Stopped",
+                "previous": norm_old,
+                "current": norm_new,
                 "status": "NO_CHANGE",
                 "is_drift": False,
                 "type": "text",
             })
-        elif norm_old != norm_new:
+        else:
             results.append({
                 "item": f"Service: {svc}",
                 "previous": norm_old,
@@ -262,36 +260,56 @@ def compare_services(old, new):
                 "is_drift": True,
                 "type": "text",
             })
-        else:
-            results.append({
-                "item": f"Service: {svc}",
-                "previous": norm_old,
-                "current": norm_new,
-                "status": "NO_CHANGE",
-                "is_drift": False,
-                "type": "text",
-            })
 
     return results
 
 
+def filter_primary_ips(ip_list):
+    """Filter out temporary interfaces (docker0, br-*, veth*, lo, fe80::*)."""
+    if not isinstance(ip_list, list):
+        return []
+    filtered = []
+    for entry in ip_list:
+        s = str(entry).strip()
+        if not s:
+            continue
+        parts = s.split()
+        if len(parts) >= 2:
+            iface, ip = parts[0], parts[1]
+        else:
+            iface, ip = "", s
+
+        if iface in ("lo", "docker0") or iface.startswith("br-") or iface.startswith("veth"):
+            continue
+        if ip.startswith("fe80::") or ip.startswith("127.0.0.1") or ip.startswith("::1"):
+            continue
+        filtered.append(f"{iface} {ip}".strip())
+    return filtered
+
+
 def compare_network(old, new):
-    """Compare Network configuration (IP Addresses & Full Route Table via ip route show)."""
+    """Compare Network configuration (Primary IPs & Full Route Table). Ignore temporary interfaces."""
     results = []
     net_old = old.get("network", {})
     net_new = new.get("network", {})
 
-    old_ips = ", ".join(net_old.get("ip_addresses", [])) or "None"
-    new_ips = ", ".join(net_new.get("ip_addresses", [])) or "None"
-    ip_changed = old_ips != new_ips
+    old_raw_ips = net_old.get("ip_addresses", [])
+    new_raw_ips = net_new.get("ip_addresses", [])
+
+    old_primary = filter_primary_ips(old_raw_ips)
+    new_primary = filter_primary_ips(new_raw_ips)
+
+    old_ips_str = "\n".join(old_primary) if old_primary else "None"
+    new_ips_str = "\n".join(new_primary) if new_primary else "None"
+    ip_changed = old_ips_str != new_ips_str
 
     results.append({
-        "item": "Configured IP Addresses",
-        "previous": old_ips,
-        "current": new_ips,
+        "item": "Primary IP Addresses",
+        "previous": old_ips_str,
+        "current": new_ips_str,
         "status": "CHANGED" if ip_changed else "NO_CHANGE",
         "is_drift": ip_changed,
-        "type": "text",
+        "type": "multiline",
     })
 
     old_routes = net_old.get("routes", [])
@@ -307,7 +325,7 @@ def compare_network(old, new):
         "current": new_routes_str,
         "status": "CHANGED" if route_changed else "NO_CHANGE",
         "is_drift": route_changed,
-        "type": "text",
+        "type": "multiline",
     })
 
     return results
