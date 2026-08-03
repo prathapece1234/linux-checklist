@@ -1133,12 +1133,12 @@ def get_ips():
 def get_routes():
     routes = []
     try:
-        out = subprocess.check_output("route -n 2>/dev/null", shell=True, text=True)
-        lines = out.strip().split('\n')[2:]
+        out = subprocess.check_output("route -n 2>/dev/null || ip route 2>/dev/null", shell=True, text=True)
+        lines = out.strip().split('\n')
         for line in lines:
-            parts = line.split()
-            if len(parts) >= 8:
-                routes.append(f"{parts[0]} netmask {parts[2]} gw {parts[1]} dev {parts[7]}")
+            line_str = line.strip()
+            if line_str and not line_str.startswith("Kernel IP") and not line_str.startswith("Destination"):
+                routes.append(line_str)
     except Exception:
         pass
     return routes

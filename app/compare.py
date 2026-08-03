@@ -212,6 +212,17 @@ def compare_memory(old, new):
     return results
 
 
+def normalize_service_status(st):
+    st_upper = str(st).strip().upper() if st else "NOT_INSTALLED"
+    if st_upper in ("RUNNING", "ACTIVE"):
+        return "Running"
+    elif st_upper in ("STOPPED", "INACTIVE", "DEAD"):
+        return "Stopped"
+    elif st_upper in ("NOT_INSTALLED", "N/A", "UNKNOWN", ""):
+        return "Not Installed"
+    return st_upper.title()
+
+
 def compare_services(old, new):
     """Compare Service State (Running, Stopped, Failed, Not Installed). Ignore logs/timestamps."""
     results = []
@@ -222,27 +233,28 @@ def compare_services(old, new):
     all_services = sorted(set(target_services + list(svc_old.keys()) + list(svc_new.keys())))
 
     for svc in all_services:
-        old_st = str(svc_old.get(svc, "NOT_INSTALLED")).strip().upper()
-        new_st = str(svc_new.get(svc, "NOT_INSTALLED")).strip().upper()
+        raw_old = svc_old.get(svc, "NOT_INSTALLED")
+        raw_new = svc_new.get(svc, "NOT_INSTALLED")
 
-        if old_st in ("N/A", "UNKNOWN", ""): old_st = "NOT_INSTALLED"
-        if new_st in ("N/A", "UNKNOWN", ""): new_st = "NOT_INSTALLED"
+        norm_old = normalize_service_status(raw_old)
+        norm_new = normalize_service_status(raw_new)
 
-        # If both are NOT_INSTALLED -> NO_CHANGE (not drift)
-        if old_st == "NOT_INSTALLED" and new_st == "NOT_INSTALLED":
+        # Non-running states (e.g. Stopped vs Not Installed or Stopped vs Stopped) are NOT configuration drift!
+        non_running = ("Stopped", "Not Installed")
+        if norm_old in non_running and norm_new in non_running:
             results.append({
                 "item": f"Service: {svc}",
-                "previous": "Not Installed",
-                "current": "Not Installed",
+                "previous": norm_old,
+                "current": norm_new,
                 "status": "NO_CHANGE",
                 "is_drift": False,
                 "type": "text",
             })
-        elif old_st != new_st:
+        elif norm_old != norm_new:
             results.append({
                 "item": f"Service: {svc}",
-                "previous": old_st.title(),
-                "current": new_st.title(),
+                "previous": norm_old,
+                "current": norm_new,
                 "status": "CHANGED",
                 "is_drift": True,
                 "type": "text",
@@ -250,8 +262,8 @@ def compare_services(old, new):
         else:
             results.append({
                 "item": f"Service: {svc}",
-                "previous": old_st.title(),
-                "current": new_st.title(),
+                "previous": norm_old,
+                "current": norm_new,
                 "status": "NO_CHANGE",
                 "is_drift": False,
                 "type": "text",
@@ -261,7 +273,7 @@ def compare_services(old, new):
 
 
 def compare_network(old, new):
-    """Compare Network configuration (IP Addresses & Routes)."""
+    """Compare Network configuration (IP Addresses & Full Route Table)."""
     results = []
     net_old = old.get("network", {})
     net_new = new.get("network", {})
@@ -279,14 +291,17 @@ def compare_network(old, new):
         "type": "text",
     })
 
-    old_routes = len(net_old.get("routes", []))
-    new_routes = len(net_new.get("routes", []))
-    route_changed = old_routes != new_routes
+    old_routes = net_old.get("routes", [])
+    new_routes = net_new.get("routes", [])
+
+    old_routes_str = "\n".join(old_routes) if isinstance(old_routes, list) and old_routes else "No routes configured"
+    new_routes_str = "\n".join(new_routes) if isinstance(new_routes, list) and new_routes else "No routes configured"
+    route_changed = old_routes_str != new_routes_str
 
     results.append({
-        "item": "Network Routing Rules",
-        "previous": f"{old_routes} routes active",
-        "current": f"{new_routes} routes active",
+        "item": "Network Routing Table (route -n)",
+        "previous": old_routes_str,
+        "current": new_routes_str,
         "status": "CHANGED" if route_changed else "NO_CHANGE",
         "is_drift": route_changed,
         "type": "text",
