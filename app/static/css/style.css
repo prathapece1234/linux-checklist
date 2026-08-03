@@ -186,10 +186,10 @@ a:hover { text-decoration: underline; }
    MAIN CONTAINER
    ============================================================================= */
 .main-container {
-    max-width: 1600px;
+    max-width: 1720px;
     margin: 0 auto;
-    padding: 30px;
-    min-height: calc(100vh - 85px - 70px);
+    padding: 20px 24px;
+    min-height: calc(100vh - 72px - 60px);
 }
 
 /* =============================================================================
@@ -341,7 +341,7 @@ a:hover { text-decoration: underline; }
 .dashboard-table th {
     background: #F6F8FC;
     border-bottom: 2px solid #E6EAF2;
-    padding: 16px 20px;
+    padding: 10px 16px;
     text-align: left;
     font-weight: 600;
     color: #6B7280;
@@ -351,8 +351,10 @@ a:hover { text-decoration: underline; }
     white-space: nowrap;
 }
 
-.dashboard-table td {
-    padding: 16px 20px;
+.dashboard-table td,
+.data-table td,
+.data-table th {
+    padding: 10px 16px;
     border-bottom: 1px solid #E6EAF2;
     vertical-align: middle;
     font-weight: 500;
@@ -790,10 +792,10 @@ a:hover { text-decoration: underline; }
     background: #ffffff;
     border: 1px solid #E6EAF2;
     border-radius: 14px;
-    box-shadow: 0 4px 20px rgba(32, 41, 57, 0.05);
-    padding: 24px 30px;
-    max-width: 800px;
-    margin: 24px auto 30px;
+    box-shadow: 0 4px 16px rgba(32, 41, 57, 0.04);
+    padding: 20px 26px;
+    max-width: 850px;
+    margin: 16px auto 18px;
 }
 
 .compare-card-header {
@@ -1001,20 +1003,20 @@ a:hover { text-decoration: underline; }
 .compare-category-block {
     background: #ffffff;
     border: 1px solid #E6EAF2;
-    border-radius: 16px;
-    box-shadow: 0 4px 20px rgba(32, 41, 57, 0.05);
-    margin-bottom: 24px;
+    border-radius: 14px;
+    box-shadow: 0 4px 16px rgba(32, 41, 57, 0.04);
+    margin-bottom: 20px;
     overflow: hidden;
 }
 
 .category-block-title {
     background: #F8FAFC;
     border-bottom: 1px solid #E6EAF2;
-    padding: 16px 24px;
+    padding: 12px 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 1.05em;
+    font-size: 1.02em;
     font-weight: 700;
     color: #1E293B;
 }
