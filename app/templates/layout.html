@@ -17,10 +17,10 @@
                     <span>Enterprise Linux Health Dashboard</span>
                 </a>
             </div>
-            <div class="nav-right" style="display:flex;align-items:center;gap:18px;">
-                <div class="header-client-card">
-                    <img src="{{ url_for('static', filename='images/xius_logo.png') }}" alt="XIUS Logo" class="client-logo-img">
-                    <span class="client-name-text">XCO - XIUS Central Office</span>
+            <div class="nav-right" style="display:flex;align-items:center;">
+                <div class="header-client-block">
+                    <span class="header-client-label">Client</span>
+                    <span class="header-client-val">XCO – XIUS Central Office</span>
                 </div>
                 {% if auth_enabled and user %}
                 <span class="nav-user">Welcome, <strong>{{ user }}</strong></span>

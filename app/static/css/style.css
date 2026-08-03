@@ -62,32 +62,32 @@ a:hover { text-decoration: underline; }
     gap: 12px;
 }
 
-/* Header XIUS Client Component (Right-aligned) */
-.header-client-card {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    background: rgba(255, 255, 255, 0.14);
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border-radius: 12px;
-    padding: 6px 14px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+/* Header Client Text Block (Right-aligned, no pills/badges/borders) */
+.header-client-block {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    text-align: right;
+    margin-right: 50px;
 }
 
-.client-logo-img {
-    height: 26px;
-    width: auto;
-    object-fit: contain;
-    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.15));
-}
-
-.client-name-text {
-    color: #ffffff;
-    font-size: 0.84em;
+.header-client-label {
+    font-size: 12px;
     font-weight: 600;
-    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: rgba(255, 255, 255, 0.75);
+    line-height: 1;
+    display: block;
+}
+
+.header-client-val {
+    font-size: 20px;
+    font-weight: 700;
+    color: #FFFFFF;
+    line-height: 1.2;
+    display: block;
+    margin-top: 2px;
     white-space: nowrap;
 }
 
