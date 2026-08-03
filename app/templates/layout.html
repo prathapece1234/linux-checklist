@@ -12,7 +12,10 @@
     <nav class="top-nav">
         <div class="nav-content">
             <div class="nav-brand">
-                <a href="{{ url_for('dashboard.index') }}"><i data-lucide="file-text" style="width:22px;height:22px;"></i> Enterprise Linux Health Dashboard</a>
+                <a href="{{ url_for('dashboard.index') }}" style="display:flex;align-items:center;gap:12px;">
+                    <img src="{{ url_for('static', filename='images/linux_logo.png') }}" alt="Linux Logo" style="width:28px;height:28px;border-radius:6px;object-fit:cover;">
+                    <span>Enterprise Linux Health Dashboard</span>
+                </a>
             </div>
             <div class="nav-right">
                 {% if auth_enabled and user %}

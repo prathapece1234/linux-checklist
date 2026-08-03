@@ -15,17 +15,9 @@
             <!-- Vertically Centered Content Block -->
             <div class="left-content-center">
                 
-                <!-- Linux Logo Placeholder & Brand Header -->
+                <!-- Linux Tux Logo Header -->
                 <div class="left-brand-header">
-                    <div class="left-logo-icon">
-                        <!-- Linux Tux / Server SVG Icon -->
-                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
-                            <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
-                            <circle cx="9" cy="9" r="1" fill="currentColor"/>
-                            <circle cx="15" cy="9" r="1" fill="currentColor"/>
-                        </svg>
-                    </div>
+                    <img src="{{ url_for('static', filename='images/linux_logo.png') }}" alt="Enterprise Linux Logo" style="width:64px;height:64px;border-radius:14px;box-shadow:0 6px 16px rgba(198,29,36,0.25);object-fit:cover;">
                     <div class="left-brand-title">
                         <h1>Enterprise Linux Health Dashboard</h1>
                         <p>Centralized Linux Infrastructure Monitoring Platform</p>
