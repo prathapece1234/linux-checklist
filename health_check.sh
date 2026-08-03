@@ -255,22 +255,21 @@ HTMLMETA
 
         html { scroll-behavior: smooth; }
 
-        html { scroll-behavior: smooth; }
-
         .top-nav {
-            background: linear-gradient(90deg, #C62828 0%, #B71C1C 20%, #8E244D 45%, #3B5CCC 80%, #4F7DFF 100%);
+            background: linear-gradient(90deg, #C61D24 0%, #B41E2C 25%, #8D2757 50%, #4F6CEB 75%, #1754D1 100%);
             color: #ffffff;
-            min-height: 72px;
-            padding: 10px 30px;
+            height: 85px;
+            min-height: 85px;
+            padding: 0 30px;
             position: sticky;
             top: 0;
             z-index: 1000;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+            box-shadow: 0 8px 24px rgba(23, 84, 209, 0.15);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(255,255,255,0.2);
-            border-bottom-left-radius: 12px;
-            border-bottom-right-radius: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+            border-bottom-left-radius: 14px;
+            border-bottom-right-radius: 14px;
             display: flex;
             align-items: center;
         }
@@ -289,21 +288,21 @@ HTMLMETA
             justify-content: center;
             gap: 8px;
             background: #ffffff;
-            color: #1f2937 !important;
-            border: 2px solid #ef5350;
-            padding: 6px 16px;
-            border-radius: 8px;
-            font-size: 0.85em;
-            font-weight: 700;
+            color: #202939 !important;
+            border: 1px solid #E6EAF2;
+            padding: 8px 18px;
+            border-radius: 12px;
+            font-size: 0.88em;
+            font-weight: 600;
             text-decoration: none !important;
             transition: all 0.25s ease;
             box-shadow: 0 2px 6px rgba(0,0,0,0.1);
         }
         .btn-back-dashboard:hover {
-            background: #d32f2f;
+            background: #C61D24;
             color: #ffffff !important;
-            border-color: #d32f2f;
-            box-shadow: 0 4px 12px rgba(211, 47, 47, 0.4);
+            border-color: #C61D24;
+            box-shadow: 0 4px 12px rgba(198, 29, 36, 0.3);
         }
         .nav-center { text-align: center; }
         .report-title-wrap {
@@ -315,7 +314,7 @@ HTMLMETA
         .report-title-icon { font-size: 1.3em; }
         .report-title-text {
             font-size: 24px;
-            font-weight: 800;
+            font-weight: 600;
             color: #ffffff;
             line-height: 1.2;
             letter-spacing: -0.4px;
@@ -326,88 +325,87 @@ HTMLMETA
             justify-content: center;
             gap: 14px;
             font-size: 13.5px;
-            color: rgba(255, 255, 255, 0.85);
+            color: rgba(255, 255, 255, 0.88);
             white-space: nowrap;
             margin-top: 3px;
+            font-weight: 500;
         }
-        .nav-meta-item strong { color: #ffffff; font-weight: 700; }
+        .nav-meta-item strong { color: #ffffff; font-weight: 600; }
         .meta-dot { color: rgba(255, 255, 255, 0.4); font-size: 0.9em; }
         .nav-right { width: 100%; }
 
-        .page-layout { display: flex; min-height: calc(100vh - 72px); }
+        .page-layout { display: flex; min-height: calc(100vh - 85px); }
 
         .sidebar {
             position: sticky;
-            top: 76px;
+            top: 89px;
             width: 240px;
             min-width: 240px;
-            height: calc(100vh - 76px);
+            height: calc(100vh - 89px);
             background: #ffffff;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.04);
+            box-shadow: 2px 0 10px rgba(32, 41, 57, 0.04);
             overflow-y: auto;
             padding: 15px 0;
+            border-right: 1px solid #E6EAF2;
         }
         .side-nav-title {
-            font-size: 0.72em;
-            font-weight: 800;
+            font-size: 0.74em;
+            font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 1.5px;
-            background: linear-gradient(90deg, #D32F2F, #FF5252);
+            background: linear-gradient(90deg, #C61D24, #FF6464);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            padding: 16px 20px 4px;
-            margin-bottom: 2px;
-            position: relative;
+            padding: 16px 20px 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
-        .side-nav-title::after {
-            content: '';
-            display: block;
-            width: 24px;
-            height: 2px;
-            background: linear-gradient(90deg, #D32F2F, #FF5252);
-            border-radius: 2px;
-            margin-top: 3px;
+        .side-title-icon {
+            font-size: 1.1em;
+            -webkit-text-fill-color: #C61D24;
         }
         .side-nav a {
             display: block;
-            padding: 8px 16px 8px 20px;
+            padding: 9px 16px 9px 20px;
             margin: 2px 10px;
-            border-radius: 6px;
-            color: #4b5563;
-            font-size: 0.85em;
+            border-radius: 8px;
+            color: #4B5563;
+            font-size: 0.86em;
+            font-weight: 500;
             border-left: 3px solid transparent;
             transition: all 0.2s ease;
         }
         .side-nav a:hover {
-            background: #eff6ff;
-            color: #1e3a8a;
+            background: #F8FAFC;
+            color: #1754D1;
         }
         .side-nav a.active {
-            color: #1e3a8a;
-            background: #eff6ff;
-            border-left: 3px solid #d32f2f;
-            font-weight: 700;
+            color: #1754D1;
+            background: #EFF6FF;
+            border-left: 3px solid #1754D1;
+            font-weight: 600;
         }
 
         .main-content {
             flex: 1;
-            padding: 25px 30px;
+            padding: 30px;
             max-width: calc(100% - 240px);
         }
 
         .report-section {
-            scroll-margin-top: 90px;
+            scroll-margin-top: 100px;
             margin-bottom: 24px;
             background: #ffffff;
-            border-radius: 14px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.05);
-            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(32, 41, 57, 0.05);
+            border: 1px solid #E6EAF2;
             overflow: hidden;
             position: relative;
             transition: box-shadow 0.25s ease, transform 0.25s ease;
         }
         .report-section:hover {
-            box-shadow: 0 8px 26px rgba(0,0,0,0.09);
+            box-shadow: 0 8px 28px rgba(32, 41, 57, 0.08);
         }
         .report-section::before {
             content: '';
@@ -416,15 +414,15 @@ HTMLMETA
             left: 0;
             bottom: 0;
             width: 4px;
-            border-radius: 10px;
-            background: linear-gradient(180deg, #d32f2f 0%, #2563eb 100%);
+            border-radius: 4px;
+            background: #1754D1;
             z-index: 2;
         }
 
         .section-header {
             background: #ffffff;
-            padding: 16px 24px 16px 28px;
-            border-bottom: 1px solid #f1f5f9;
+            padding: 18px 26px 18px 28px;
+            border-bottom: 1px solid #E6EAF2;
             cursor: pointer;
             display: flex;
             justify-content: space-between;
@@ -433,12 +431,12 @@ HTMLMETA
         }
         .section-header h3 {
             font-size: 1.1em;
-            font-weight: 800;
-            color: #1e293b;
+            font-weight: 600;
+            color: #202939;
             letter-spacing: -0.2px;
         }
         .header-right { display: flex; align-items: center; gap: 12px; }
-        .toggle-icon { font-size: 0.9em; color: #9ca3af; transition: transform 0.3s; }
+        .toggle-icon { font-size: 0.9em; color: #6B7280; transition: transform 0.3s; }
         .toggle-icon.collapsed { transform: rotate(-90deg); }
         .section-body {
             background: #ffffff;
@@ -446,27 +444,27 @@ HTMLMETA
         }
         .section-body.hidden { display: none; }
 
-        .badge { display: inline-block; padding: 3px 14px; border-radius: 20px; font-size: 0.75em; font-weight: 700; text-transform: uppercase; }
-        .badge-info { background: #d1ecf1; color: #0c5460; }
-        .badge-success { background: #d4edda; color: #155724; }
+        .badge { display: inline-block; padding: 4px 14px; border-radius: 20px; font-size: 0.75em; font-weight: 600; text-transform: uppercase; }
+        .badge-info { background: #DBEAFE; color: #1754D1; }
+        .badge-success { background: #DCFCE7; color: #16A34A; }
 
-        .table-responsive { overflow-x: auto; margin-bottom: 15px; }
+        .table-responsive { overflow-x: auto; margin-bottom: 15px; border-radius: 12px; border: 1px solid #E6EAF2; }
         .table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
-        .table th { background: #f8f9fa; padding: 10px 14px; text-align: left; font-weight: 700; color: #555; border-bottom: 2px solid #dee2e6; }
-        .table td { padding: 9px 14px; border-bottom: 1px solid #eee; }
-        .table tr:hover { background: #f8f9ff; }
-        .info-table th { width: 200px; background: #f0f3ff; color: #4a6cf7; }
+        .table th { background: #F6F8FC; padding: 12px 16px; text-align: left; font-weight: 600; color: #6B7280; border-bottom: 2px solid #E6EAF2; font-size: 0.82em; text-transform: uppercase; }
+        .table td { padding: 12px 16px; border-bottom: 1px solid #E6EAF2; font-weight: 500; }
+        .table tr:hover { background: #F8FAFC; }
+        .info-table th { width: 200px; background: #EFF6FF; color: #1754D1; }
 
         .progress-group { margin-bottom: 14px; }
-        .progress-label { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.88em; }
-        .progress-container { height: 22px; background: #e9ecef; border-radius: 11px; overflow: hidden; }
-        .progress-bar { height: 100%; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 0.75em; font-weight: 700; color: #fff; background: linear-gradient(90deg, #4a6cf7, #6366f1); }
+        .progress-label { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.88em; font-weight: 500; }
+        .progress-container { height: 22px; background: #E6EAF2; border-radius: 11px; overflow: hidden; }
+        .progress-bar { height: 100%; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 0.75em; font-weight: 600; color: #fff; background: linear-gradient(90deg, #1754D1, #4F8BFF); }
 
         .cmd-block { margin-bottom: 15px; }
-        .cmd-label { font-size: 0.82em; font-weight: 700; color: #fff; background: #343a40; padding: 6px 14px; border-radius: 6px 6px 0 0; display: inline-block; }
-        pre { background: #1e1e2e; color: #cdd6f4; padding: 15px 18px; border-radius: 0 6px 6px 6px; overflow-x: auto; font-size: 0.82em; font-family: monospace; margin: 0; white-space: pre-wrap; }
+        .cmd-label { font-size: 0.82em; font-weight: 600; color: #fff; background: #202939; padding: 6px 14px; border-radius: 6px 6px 0 0; display: inline-block; }
+        pre { background: #0F172A; color: #E2E8F0; padding: 16px 20px; border-radius: 0 8px 8px 8px; overflow-x: auto; font-size: 0.84em; font-family: 'SFMono-Regular', Consolas, monospace; margin: 0; white-space: pre-wrap; }
 
-        .page-footer { text-align: center; padding: 25px; color: #888; font-size: 0.85em; background: #fff; border-top: 1px solid #eee; margin-top: 20px; }
+        .page-footer { text-align: center; padding: 25px; color: #6B7280; font-size: 0.85em; font-weight: 500; background: #ffffff; border-top: 1px solid #E6EAF2; margin-top: 30px; }
 
         @media (max-width: 992px) {
             .top-nav .nav-content { grid-template-columns: 1fr; gap: 8px; text-align: center; }
@@ -507,33 +505,33 @@ HTMLSTYLE
     <div class="page-layout">
     <aside class="sidebar">
         <nav class="side-nav">
-            <div class="side-nav-title">System</div>
+            <div class="side-nav-title"><span class="side-title-icon">&#x2699;</span> SYSTEM</div>
             <a href="#system-info">System Info</a>
             <a href="#hardware">Hardware</a>
             <a href="#kernel">Kernel</a>
-            <div class="side-nav-title">Storage</div>
+            <div class="side-nav-title"><span class="side-title-icon">&#x1F4BE;</span> STORAGE</div>
             <a href="#disk">Disk Usage</a>
             <a href="#lvm">LVM</a>
             <a href="#filesystem">Filesystem</a>
             <a href="#multipath">Multipath</a>
-            <div class="side-nav-title">Memory</div>
+            <div class="side-nav-title"><span class="side-title-icon">&#x1F9E0;</span> MEMORY</div>
             <a href="#memory">Memory</a>
             <a href="#performance">Performance</a>
-            <div class="side-nav-title">Network</div>
+            <div class="side-nav-title"><span class="side-title-icon">&#x1F310;</span> NETWORK</div>
             <a href="#network">Network</a>
             <a href="#network-config">Network Config</a>
             <a href="#bonding">Bond Status</a>
             <a href="#routing">Routing</a>
             <a href="#dns">DNS</a>
             <a href="#ports">Listening Ports</a>
-            <div class="side-nav-title">Security</div>
+            <div class="side-nav-title"><span class="side-title-icon">&#x1F6E1;</span> SECURITY</div>
             <a href="#firewall">Firewall</a>
             <a href="#selinux">SELinux</a>
-            <div class="side-nav-title">Services</div>
+            <div class="side-nav-title"><span class="side-title-icon">&#x1F5A5;</span> SERVICES</div>
             <a href="#ntp">NTP</a>
             <a href="#services">Services</a>
             <a href="#exports">NFS Exports</a>
-            <div class="side-nav-title">Config & Users</div>
+            <div class="side-nav-title"><span class="side-title-icon">&#x2699;</span> CONFIG & USERS</div>
             <a href="#cron">Cron</a>
             <a href="#sysctl">Sysctl</a>
             <a href="#limits">Limits</a>
