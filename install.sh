@@ -1,10 +1,14 @@
 #!/bin/bash
 # =============================================================================
-# Enterprise Linux Health Dashboard - Production Installation Script
+# Enterprise Linux Health Dashboard - Production Installation & Upgrade Script
 # =============================================================================
-# Installs the dynamic Flask dashboard with Gunicorn behind Nginx reverse proxy.
+# Installs or upgrades the dynamic Flask dashboard with Gunicorn behind Nginx.
 # Designed for production Linux servers (OpsRamp Gateway, RHEL, Ubuntu).
-# Preserves all existing services without disruption.
+# Preserves all existing services and uploaded reports without disruption.
+#
+# Usage:
+#   sudo ./install.sh           (Interactive install / upgrade prompt)
+#   sudo ./install.sh --upgrade (Non-interactive upgrade)
 # =============================================================================
 
 set -e
@@ -24,12 +28,22 @@ SERVICE_GROUP="healthdashboard"
 API_PORT="5000"
 DASHBOARD_PORT="8088"
 
+# Check CLI flags
+IS_UPGRADE=false
+for arg in "$@"; do
+    case "$arg" in
+        --upgrade|-u)
+            IS_UPGRADE=true
+            ;;
+    esac
+done
+
 # Setup logging directory and dual-logging to stdout + logfile
 mkdir -p "${LOG_DIR}" 2>/dev/null || true
 exec > >(tee -a "${INSTALL_LOG}") 2>&1
 
 echo "============================================================"
-echo " Enterprise Linux Health Dashboard Installation"
+echo " Enterprise Linux Health Dashboard Installation & Upgrade"
 echo " Date: $(date '+%Y-%m-%d %H:%M:%S')"
 echo " Server Hostname: $(hostname 2>/dev/null || echo 'unknown')"
 echo "============================================================"
@@ -41,46 +55,98 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # =============================================================================
-# 1. PRE-CHECK: VERIFY PORTS
+# 1. PRE-CHECK: VERIFY PORTS & HANDLE UPGRADE MODE
 # =============================================================================
 echo ""
-echo "[Step 1/11] Checking required ports..."
+echo "[Step 1/11] Checking required ports and existing installation state..."
 
-check_port() {
+is_our_service() {
     local PORT="$1"
-    local SERVICE="$2"
-
     if ss -tulpn 2>/dev/null | grep -q ":${PORT}"; then
+        local PROCESS
         PROCESS=$(ss -tulpn | grep ":${PORT}" | head -1)
-
-        echo "$PROCESS" | grep -qiE "upload.py|health-dashboard|python|gunicorn"
-        if [ $? -eq 0 ]; then
-            echo "[INFO] ${SERVICE} is already installed and running on port ${PORT}."
-            echo "[INFO] Installation is not required."
-            exit 0
+        if echo "$PROCESS" | grep -qiE "upload.py|health-dashboard|python|gunicorn|flask"; then
+            return 0
         fi
-
-        echo "$PROCESS" | grep -qi nginx
-        if [ $? -eq 0 ] && [ "$PORT" = "$DASHBOARD_PORT" ]; then
-            echo "[INFO] Dashboard is already running on port ${PORT}."
-            echo "[INFO] Installation is not required."
-            exit 0
+        if [ "$PORT" = "$DASHBOARD_PORT" ] && echo "$PROCESS" | grep -qi nginx; then
+            return 0
         fi
-
-        echo ""
-        echo "[ERROR] Port ${PORT} is already being used by another application."
-        echo ""
-        echo "$PROCESS"
-        echo ""
-        echo "Please change the configured port before continuing."
-        exit 1
     fi
+    return 1
 }
 
-check_port "$API_PORT" "Upload API"
-check_port "$DASHBOARD_PORT" "Dashboard"
+is_foreign_process() {
+    local PORT="$1"
+    if ss -tulpn 2>/dev/null | grep -q ":${PORT}"; then
+        if ! is_our_service "$PORT"; then
+            return 0
+        fi
+    fi
+    return 1
+}
 
-echo "[INFO] Ports ${API_PORT} and ${DASHBOARD_PORT} are available."
+# Check for foreign application conflicts
+if is_foreign_process "$API_PORT"; then
+    echo ""
+    echo "[ERROR] Port ${API_PORT} is used by another application:"
+    ss -tulpn | grep ":${API_PORT}" | head -1
+    echo "Please change the configured port before continuing."
+    exit 1
+fi
+
+if is_foreign_process "$DASHBOARD_PORT"; then
+    echo ""
+    echo "[ERROR] Port ${DASHBOARD_PORT} is used by another application:"
+    ss -tulpn | grep ":${DASHBOARD_PORT}" | head -1
+    echo "Please change the configured port before continuing."
+    exit 1
+fi
+
+# Check for existing installation
+EXISTING_FOUND=false
+if is_our_service "$API_PORT" || is_our_service "$DASHBOARD_PORT" || [ -d "$APP_DIR/app" ] || [ -f "/etc/systemd/system/health-dashboard.service" ] || [ -f "/etc/systemd/system/health-dashboard-api.service" ]; then
+    EXISTING_FOUND=true
+fi
+
+if [ "$EXISTING_FOUND" = true ]; then
+    echo "[INFO] Existing Health Dashboard installation detected."
+
+    if [ "$IS_UPGRADE" = true ]; then
+        echo "[INFO] Upgrade mode enabled via flag (--upgrade)."
+    elif [ -t 0 ]; then
+        echo ""
+        echo "============================================================"
+        echo " Existing Health Dashboard Installation Detected!"
+        echo "============================================================"
+        echo " Choose action:"
+        echo "   1) Upgrade existing installation (Update app files, venv & restart services)"
+        echo "   2) Fresh installation (Reinstall & overwrite configs)"
+        echo "   3) Exit / Cancel"
+        echo "============================================================"
+        read -rp "Select option [1-3]: " UPGRADE_CHOICE
+
+        case "$UPGRADE_CHOICE" in
+            1)
+                IS_UPGRADE=true
+                echo "[INFO] Proceeding with Upgrade..."
+                ;;
+            2)
+                IS_UPGRADE=false
+                echo "[INFO] Proceeding with Fresh Installation..."
+                ;;
+            3|*)
+                echo "[INFO] Installation cancelled by user."
+                exit 0
+                ;;
+        esac
+    else
+        # Non-interactive without --upgrade flag: default to upgrade
+        IS_UPGRADE=true
+        echo "[INFO] Non-interactive execution: automatically proceeding in Upgrade mode."
+    fi
+else
+    echo "[INFO] Ports ${API_PORT} and ${DASHBOARD_PORT} are available. Starting fresh installation."
+fi
 
 # =============================================================================
 # 2. PACKAGE INSTALLATION (ONLY MISSING PACKAGES)
@@ -188,7 +254,10 @@ echo "[INFO] Installing / Updating dependencies inside venv..."
 # 5. COPY APPLICATION FILES & SCOPED PERMISSIONS
 # =============================================================================
 echo ""
-echo "[Step 5/11] Copying Application Files..."
+echo "[Step 5/11] Copying / Updating Application Source Files..."
+
+# Clean old app code if present
+rm -rf "${APP_DIR}/app" 2>/dev/null || true
 
 # Copy Flask application package
 cp -r "${SCRIPT_DIR}/app" "${APP_DIR}/"
@@ -216,7 +285,7 @@ find "${WEB_ROOT}" -type f -exec chmod 644 {} +
 # 6. GENERATE SECRET KEY & ENVIRONMENT FILE
 # =============================================================================
 echo ""
-echo "[Step 6/11] Generating Flask Secret Key..."
+echo "[Step 6/11] Environment Configuration..."
 
 if [ ! -f "${ENV_FILE}" ]; then
     SECRET_KEY=$("${VENV_DIR}/bin/python" -c "import secrets; print(secrets.token_hex(32))")
@@ -233,7 +302,7 @@ EOF
     chmod 600 "${ENV_FILE}"
     echo "[INFO] Generated new secret key and environment file."
 else
-    echo "[INFO] Environment file already exists. Preserving."
+    echo "[INFO] Existing environment file found (${ENV_FILE}). Preserving settings."
 fi
 
 # =============================================================================
@@ -243,69 +312,90 @@ echo ""
 echo "[Step 7/11] Dashboard Authentication Configuration..."
 echo "------------------------------------------------------------"
 
+# If upgrading and auth already configured, ask if user wants to keep or reconfigure
+AUTH_ALREADY_SET=false
+if [ -f "${USERS_FILE}" ]; then
+    AUTH_ALREADY_SET=true
+fi
+
 ENABLE_AUTH="NO"
 
-while true; do
-    read -rp "Enable Dashboard Authentication? (Y/N): " AUTH_CHOICE
+if [ "$IS_UPGRADE" = true ] && [ "$AUTH_ALREADY_SET" = true ] && [ ! -t 0 ]; then
+    echo "[INFO] Upgrade mode (non-interactive): Preserving existing authentication settings."
+else
+    while true; do
+        if [ "$AUTH_ALREADY_SET" = true ]; then
+            read -rp "Authentication is already configured. Re-configure Auth? (Y/N): " AUTH_CHOICE
+        else
+            read -rp "Enable Dashboard Authentication? (Y/N): " AUTH_CHOICE
+        fi
 
-    case "${AUTH_CHOICE^^}" in
-        Y|YES)
-            ENABLE_AUTH="YES"
+        case "${AUTH_CHOICE^^}" in
+            Y|YES)
+                ENABLE_AUTH="YES"
 
-            echo ""
-            read -rp "Admin Username: " DASH_USER
+                echo ""
+                read -rp "Admin Username: " DASH_USER
 
-            while true; do
-                read -rsp "Admin Password: " DASH_PASS
-                echo
-                read -rsp "Confirm Password: " DASH_PASS2
-                echo
+                while true; do
+                    read -rsp "Admin Password: " DASH_PASS
+                    echo
+                    read -rsp "Confirm Password: " DASH_PASS2
+                    echo
 
-                if [ "$DASH_PASS" = "$DASH_PASS2" ]; then
-                    break
-                fi
-                echo "[ERROR] Passwords do not match. Please try again."
-            done
+                    if [ "$DASH_PASS" = "$DASH_PASS2" ]; then
+                        break
+                    fi
+                    echo "[ERROR] Passwords do not match. Please try again."
+                done
 
-            # Generate users.json with hashed password
-            "${VENV_DIR}/bin/python" -c "
+                # Generate users.json with hashed password
+                "${VENV_DIR}/bin/python" -c "
 import json
 from werkzeug.security import generate_password_hash
 data = {'users': {'${DASH_USER}': {'password': generate_password_hash('${DASH_PASS}')}}}
 with open('${USERS_FILE}', 'w') as f:
     json.dump(data, f, indent=2)
 "
-            chown "${SERVICE_USER}:${SERVICE_GROUP}" "${USERS_FILE}"
-            chmod 600 "${USERS_FILE}"
+                chown "${SERVICE_USER}:${SERVICE_GROUP}" "${USERS_FILE}"
+                chmod 600 "${USERS_FILE}"
 
-            # Update .env to enable auth
-            sed -i 's/^AUTH_ENABLED=.*/AUTH_ENABLED=true/' "${ENV_FILE}"
+                # Update .env to enable auth
+                sed -i 's/^AUTH_ENABLED=.*/AUTH_ENABLED=true/' "${ENV_FILE}"
 
-            echo "[INFO] Dashboard authentication ENABLED."
-            echo ""
-            echo "====================================================="
-            echo " Dashboard User Management Utility Installed"
-            echo "====================================================="
-            echo ""
-            echo " To manage dashboard users later, run:"
-            echo ""
-            echo "   sudo ${APP_DIR}/manage-users.sh"
-            echo ""
-            break
-            ;;
+                echo "[INFO] Dashboard authentication ENABLED."
+                echo ""
+                echo "====================================================="
+                echo " Dashboard User Management Utility"
+                echo "====================================================="
+                echo " To manage dashboard users later, run:"
+                echo "   sudo ${APP_DIR}/manage-users.sh"
+                echo "====================================================="
+                break
+                ;;
 
-        N|NO)
-            ENABLE_AUTH="NO"
-            sed -i 's/^AUTH_ENABLED=.*/AUTH_ENABLED=false/' "${ENV_FILE}"
-            echo "[INFO] Dashboard authentication DISABLED."
-            break
-            ;;
+            N|NO)
+                if [ "$AUTH_ALREADY_SET" = false ]; then
+                    sed -i 's/^AUTH_ENABLED=.*/AUTH_ENABLED=false/' "${ENV_FILE}"
+                    echo "[INFO] Dashboard authentication DISABLED."
+                else
+                    echo "[INFO] Keeping existing authentication configuration."
+                fi
+                break
+                ;;
 
-        *)
-            echo "Please enter Y or N."
-            ;;
-    esac
-done
+            *)
+                echo "Please enter Y or N."
+                ;;
+        esac
+    done
+fi
+
+# Determine current auth state for summary
+CURRENT_AUTH_STATE="DISABLED"
+if grep -q "^AUTH_ENABLED=true" "${ENV_FILE}" 2>/dev/null; then
+    CURRENT_AUTH_STATE="ENABLED"
+fi
 
 # =============================================================================
 # 8. NGINX CONFIGURATION & VALIDATION
@@ -369,7 +459,7 @@ esac
 # 10. GUNICORN SYSTEMD SERVICE DEPLOYMENT
 # =============================================================================
 echo ""
-echo "[Step 10/11] Deploying Gunicorn Systemd Service (health-dashboard.service)..."
+echo "[Step 10/11] Deploying / Updating Gunicorn Systemd Service (health-dashboard.service)..."
 
 cat << EOF > /etc/systemd/system/health-dashboard.service
 [Unit]
@@ -507,23 +597,22 @@ printf " %-38s Status: [%s]\n" "Gunicorn (Flask) Service" "$VAL_GUNICORN_SVC"
 printf " %-38s Status: [%s]\n" "Dashboard Port (${DASHBOARD_PORT})" "$VAL_PORT_DASH"
 printf " %-38s Status: [%s]\n" "Upload API Port (${API_PORT})" "$VAL_PORT_API"
 echo "------------------------------------------------------------"
-
-if [ "$ENABLE_AUTH" = "YES" ]; then
-    echo " Dashboard Authentication : ENABLED"
-    echo " Admin Username           : ${DASH_USER}"
-    echo " User Management          : sudo ${APP_DIR}/manage-users.sh"
-else
-    echo " Dashboard Authentication : DISABLED"
+echo " Dashboard Authentication : ${CURRENT_AUTH_STATE}"
+if [ "$CURRENT_AUTH_STATE" = "ENABLED" ]; then
+    echo " User Management Utility  : sudo ${APP_DIR}/manage-users.sh"
 fi
-
 echo "------------------------------------------------------------"
-printf " %-38s STATUS: [%s]\n" "OVERALL INSTALLATION" "$VAL_OVERALL"
+printf " %-38s STATUS: [%s]\n" "OVERALL INSTALLATION / UPGRADE" "$VAL_OVERALL"
 echo "============================================================"
 
 if [ "$VAL_OVERALL" = "PASS" ]; then
-    echo "[SUCCESS] Installation completed successfully."
+    if [ "$IS_UPGRADE" = true ]; then
+        echo "[SUCCESS] Upgrade completed successfully with zero issues."
+    else
+        echo "[SUCCESS] Fresh installation completed successfully."
+    fi
     exit 0
 else
-    echo "[ERROR] Installation validation failed. Check: ${INSTALL_LOG}"
+    echo "[ERROR] Installation/Upgrade validation failed. Check: ${INSTALL_LOG}"
     exit 1
 fi
