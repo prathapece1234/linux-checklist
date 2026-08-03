@@ -17,45 +17,56 @@
                 
                 <!-- Linux Tux Logo Header -->
                 <div class="left-brand-header">
-                    <img src="{{ url_for('static', filename='images/linux_logo.png') }}" alt="Enterprise Linux Logo" style="width:64px;height:64px;border-radius:14px;box-shadow:0 6px 16px rgba(198,29,36,0.25);object-fit:cover;">
+                    <img src="{{ url_for('static', filename='images/linux_logo.png') }}" alt="Enterprise Linux Logo" class="left-brand-tux">
                     <div class="left-brand-title">
                         <h1>Enterprise Linux Health Dashboard</h1>
                         <p>Centralized Linux Infrastructure Monitoring Platform</p>
                     </div>
                 </div>
 
-                <!-- Feature Cards -->
+                <!-- Feature Cards (24px Spacing) -->
                 <div class="features-list">
-                    <div class="feature-card">
-                        <div class="feature-card-header">
-                            <span class="feature-icon">&#x2713;</span>
-                            <span>Automated Health Checklist Collection</span>
+                    <!-- Card 1 -->
+                    <div class="feature-card-item">
+                        <div class="feature-icon-box">
+                            <i data-lucide="file-check-2" style="width:24px;height:24px;color:#C1121F;"></i>
                         </div>
-                        <p>Automatically collect Linux health reports from multiple production servers into a single centralized dashboard.</p>
+                        <div class="feature-card-content">
+                            <h3>Automated Health Checklist Collection</h3>
+                            <p>Automatically collect Linux health reports from multiple production servers into a centralized monitoring dashboard.</p>
+                        </div>
                     </div>
 
-                    <div class="feature-card">
-                        <div class="feature-card-header">
-                            <span class="feature-icon">&#x2713;</span>
-                            <span>Before & After Report Comparison</span>
+                    <!-- Card 2 -->
+                    <div class="feature-card-item">
+                        <div class="feature-icon-box">
+                            <i data-lucide="git-compare-arrows" style="width:24px;height:24px;color:#C1121F;"></i>
                         </div>
-                        <p>Instantly compare health reports before and after maintenance, upgrades, patching, or system changes.</p>
+                        <div class="feature-card-content">
+                            <h3>Before & After Infrastructure Comparison</h3>
+                            <p>Compare infrastructure snapshots before and after maintenance, upgrades, or configuration changes to instantly detect infrastructure drift.</p>
+                        </div>
                     </div>
 
-                    <div class="feature-card">
-                        <div class="feature-card-header">
-                            <span class="feature-icon">&#x2713;</span>
-                            <span>Centralized Infrastructure Dashboard</span>
+                    <!-- Card 3 -->
+                    <div class="feature-card-item">
+                        <div class="feature-icon-box">
+                            <i data-lucide="layout-dashboard" style="width:24px;height:24px;color:#C1121F;"></i>
                         </div>
-                        <p>View storage, memory, key services, networking, and security health across all servers from one place.</p>
+                        <div class="feature-card-content">
+                            <h3>Centralized Infrastructure Dashboard</h3>
+                            <p>Monitor storage, memory, networking, services, security, performance, and overall Linux server health from a single enterprise dashboard.</p>
+                        </div>
                     </div>
                 </div>
 
-            </div>
+                <!-- Footer Tagline & Version -->
+                <div class="left-footer-divider"></div>
+                <div class="left-footer-text">
+                    <p>Designed for Linux System Administrators, DevOps Engineers, Cloud Infrastructure Teams.</p>
+                    <span class="version-tag">Enterprise Edition v2.0</span>
+                </div>
 
-            <!-- Bottom Center Tagline -->
-            <div class="left-footer-text">
-                Designed for Linux System Administrators, DevOps Engineers, and Infrastructure Teams.
             </div>
 
         </div>
@@ -114,5 +125,10 @@
         </div>
 
     </div>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            if (window.lucide) { lucide.createIcons(); }
+        });
+    </script>
 </body>
 </html>
