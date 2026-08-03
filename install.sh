@@ -468,7 +468,7 @@ User=${SERVICE_USER}
 Group=${SERVICE_GROUP}
 WorkingDirectory=${APP_DIR}
 EnvironmentFile=${ENV_FILE}
-ExecStart=${VENV_DIR}/bin/gunicorn --bind 127.0.0.1:${API_PORT} --workers 2 --timeout 120 wsgi:app
+ExecStart=${VENV_DIR}/bin/gunicorn --bind 0.0.0.0:${API_PORT} --workers 2 --timeout 120 wsgi:app
 Restart=always
 RestartSec=5
 
