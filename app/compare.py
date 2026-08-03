@@ -21,14 +21,38 @@ logger = logging.getLogger(__name__)
 # JSON LOADING & REPORT DISCOVERY
 # =============================================================================
 
+def resolve_json_filename(filename):
+    """Normalize input filename (.html, .txt, or .json) to .json."""
+    if not filename:
+        return ""
+    base = os.path.splitext(filename)[0]
+    return base + ".json"
+
+
 def load_json(filepath):
-    """Load and return a JSON summary file."""
+    """
+    Load and return a JSON summary file.
+    Returns (data, error_message).
+    """
+    if not os.path.isfile(filepath):
+        return None, f"File not found: {filepath}"
+
+    file_size = os.path.getsize(filepath)
+    if file_size == 0:
+        return None, f"File is empty (0 bytes): {filepath}"
+
     try:
         with open(filepath, "r", encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
+            if not isinstance(data, dict):
+                return None, f"Invalid JSON structure (expected root dictionary): {filepath}"
+            return data, None
+    except json.JSONDecodeError as e:
+        logger.error("JSON decode error in %s: %s", filepath, e)
+        return None, f"Invalid JSON syntax at line {e.lineno}, column {e.colno}: {e.msg}"
     except Exception as e:
         logger.error("Failed to load JSON %s: %s", filepath, e)
-        return None
+        return None, f"Unexpected error reading file: {str(e)}"
 
 
 def get_json_reports(hostname):
@@ -38,15 +62,24 @@ def get_json_reports(hostname):
         return []
 
     reports = []
+    # Collect all .json reports or matching .html reports
+    seen = set()
     for f in sorted(os.listdir(host_dir), reverse=True):
-        if f.startswith("HealthCheck_") and f.endswith(".json"):
-            fpath = os.path.join(host_dir, f)
-            mtime = os.path.getmtime(fpath)
-            reports.append({
-                "filename": f,
-                "mtime": mtime,
-                "mtime_str": datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S"),
-            })
+        if f.startswith("HealthCheck_") and f != "latest.html":
+            json_file = resolve_json_filename(f)
+            if json_file in seen:
+                continue
+
+            json_path = os.path.join(host_dir, json_file)
+            if os.path.isfile(json_path):
+                seen.add(json_file)
+                mtime = os.path.getmtime(json_path)
+                reports.append({
+                    "filename": json_file,
+                    "mtime": mtime,
+                    "mtime_str": datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S"),
+                    "size_kb": round(os.path.getsize(json_path) / 1024, 1),
+                })
 
     return reports
 
@@ -140,8 +173,8 @@ def compare_system(old, new):
 def compare_storage(old, new):
     results = []
 
-    fs_old = {item["mount"]: item for item in old.get("storage", {}).get("filesystems", [])}
-    fs_new = {item["mount"]: item for item in new.get("storage", {}).get("filesystems", [])}
+    fs_old = {item["mount"]: item for item in old.get("storage", {}).get("filesystems", []) if "mount" in item}
+    fs_new = {item["mount"]: item for item in new.get("storage", {}).get("filesystems", []) if "mount" in item}
 
     all_mounts = sorted(set(list(fs_old.keys()) + list(fs_new.keys())))
 
@@ -149,41 +182,32 @@ def compare_storage(old, new):
         old_entry = fs_old.get(mount, {})
         new_entry = fs_new.get(mount, {})
 
-        old_use = old_entry.get("use_pct", "0%")
-        new_use = new_entry.get("use_pct", "0%")
+        old_pct = old_entry.get("use_pct", "N/A")
+        new_pct = new_entry.get("use_pct", "N/A")
+
+        old_used = f"{old_entry.get('used', 'N/A')} / {old_entry.get('size', 'N/A')} ({old_pct})" if old_entry else "Not Mounted"
+        new_used = f"{new_entry.get('used', 'N/A')} / {new_entry.get('size', 'N/A')} ({new_pct})" if new_entry else "Unmounted"
+
+        status = eval_filesystem_status(new_pct) if new_entry else "FAIL"
 
         try:
-            old_num = float(str(old_use).replace("%", ""))
-        except Exception:
-            old_num = 0
+            prev_num = float(str(old_pct).replace("%", "")) if old_pct != "N/A" else 0
+        except (ValueError, TypeError):
+            prev_num = 0
 
         try:
-            new_num = float(str(new_use).replace("%", ""))
-        except Exception:
-            new_num = 0
-
-        if mount not in fs_old:
-            status = "NEW"
-            diff = "New mount point added"
-        elif mount not in fs_new:
-            status = "REMOVED"
-            diff = "Mount point removed"
-        elif old_use != new_use:
-            status = eval_filesystem_status(new_use)
-            diff = f"{old_use} → {new_use}"
-        else:
-            status = "NO_CHANGE"
-            diff = "No Change"
+            curr_num = float(str(new_pct).replace("%", "")) if new_pct != "N/A" else 0
+        except (ValueError, TypeError):
+            curr_num = 0
 
         results.append({
-            "item": f"Mount: {mount}",
-            "previous": f"{old_entry.get('size', 'N/A')} (Used: {old_use})",
-            "current": f"{new_entry.get('size', 'N/A')} (Used: {new_use})",
-            "prev_pct": old_num,
-            "curr_pct": new_num,
-            "difference": diff,
+            "item": f"Mount {mount}",
+            "previous": old_used,
+            "current": new_used,
             "status": status,
             "type": "progress",
+            "prev_pct": prev_num,
+            "curr_pct": curr_num,
         })
 
     return results
@@ -191,50 +215,59 @@ def compare_storage(old, new):
 
 def compare_memory(old, new):
     results = []
-
     mem_old = old.get("memory", {})
     mem_new = new.get("memory", {})
 
-    # RAM
-    old_ram_pct = mem_old.get("ram_used_pct", "0%")
-    new_ram_pct = mem_new.get("ram_used_pct", "0%")
-    try:
-        ram_prev_num = float(str(old_ram_pct).replace("%", ""))
-        ram_curr_num = float(str(new_ram_pct).replace("%", ""))
-    except Exception:
-        ram_prev_num = ram_curr_num = 0
+    # RAM Usage
+    ram_old_pct = mem_old.get("ram_used_pct", "N/A")
+    ram_new_pct = mem_new.get("ram_used_pct", "N/A")
+    ram_old_str = f"{mem_old.get('ram_used', 'N/A')} / {mem_old.get('ram_total', 'N/A')} ({ram_old_pct})"
+    ram_new_str = f"{mem_new.get('ram_used', 'N/A')} / {mem_new.get('ram_total', 'N/A')} ({ram_new_pct})"
 
-    ram_changed = old_ram_pct != new_ram_pct
+    try:
+        ram_prev_num = float(str(ram_old_pct).replace("%", ""))
+    except (ValueError, TypeError):
+        ram_prev_num = 0
+
+    try:
+        ram_curr_num = float(str(ram_new_pct).replace("%", ""))
+    except (ValueError, TypeError):
+        ram_curr_num = 0
+
     results.append({
-        "item": "RAM Usage",
-        "previous": f"{mem_old.get('ram_used', 'N/A')} / {mem_old.get('ram_total', 'N/A')} ({old_ram_pct})",
-        "current": f"{mem_new.get('ram_used', 'N/A')} / {mem_new.get('ram_total', 'N/A')} ({new_ram_pct})",
+        "item": "RAM Memory Usage",
+        "previous": ram_old_str,
+        "current": ram_new_str,
+        "status": eval_memory_status(ram_new_pct),
+        "type": "progress",
         "prev_pct": ram_prev_num,
         "curr_pct": ram_curr_num,
-        "difference": f"{old_ram_pct} → {new_ram_pct}" if ram_changed else "No Change",
-        "status": eval_memory_status(new_ram_pct),
-        "type": "progress",
     })
 
-    # Swap
-    old_swap_pct = mem_old.get("swap_used_pct", "0%")
-    new_swap_pct = mem_new.get("swap_used_pct", "0%")
-    try:
-        swap_prev_num = float(str(old_swap_pct).replace("%", ""))
-        swap_curr_num = float(str(new_swap_pct).replace("%", ""))
-    except Exception:
-        swap_prev_num = swap_curr_num = 0
+    # Swap Usage
+    swap_old_pct = mem_old.get("swap_used_pct", "N/A")
+    swap_new_pct = mem_new.get("swap_used_pct", "N/A")
+    swap_old_str = f"{mem_old.get('swap_used', 'N/A')} / {mem_old.get('swap_total', 'N/A')} ({swap_old_pct})"
+    swap_new_str = f"{mem_new.get('swap_used', 'N/A')} / {mem_new.get('swap_total', 'N/A')} ({swap_new_pct})"
 
-    swap_changed = old_swap_pct != new_swap_pct
+    try:
+        swap_prev_num = float(str(swap_old_pct).replace("%", ""))
+    except (ValueError, TypeError):
+        swap_prev_num = 0
+
+    try:
+        swap_curr_num = float(str(swap_new_pct).replace("%", ""))
+    except (ValueError, TypeError):
+        swap_curr_num = 0
+
     results.append({
-        "item": "Swap Usage",
-        "previous": f"{mem_old.get('swap_used', 'N/A')} / {mem_old.get('swap_total', 'N/A')} ({old_swap_pct})",
-        "current": f"{mem_new.get('swap_used', 'N/A')} / {mem_new.get('swap_total', 'N/A')} ({new_swap_pct})",
+        "item": "Swap Memory Usage",
+        "previous": swap_old_str,
+        "current": swap_new_str,
+        "status": eval_swap_status(swap_new_pct),
+        "type": "progress",
         "prev_pct": swap_prev_num,
         "curr_pct": swap_curr_num,
-        "difference": f"{old_swap_pct} → {new_swap_pct}" if swap_changed else "No Change",
-        "status": eval_swap_status(new_swap_pct),
-        "type": "progress",
     })
 
     return results
@@ -242,25 +275,22 @@ def compare_memory(old, new):
 
 def compare_services(old, new):
     results = []
-
     svc_old = old.get("services", {})
     svc_new = new.get("services", {})
 
     all_services = sorted(set(list(svc_old.keys()) + list(svc_new.keys())))
 
     for svc in all_services:
-        old_state = svc_old.get(svc, "N/A")
-        new_state = svc_new.get(svc, "N/A")
-        changed = str(old_state) != str(new_state)
-        status = eval_service_status(old_state, new_state)
+        old_st = svc_old.get(svc, "N/A")
+        new_st = svc_new.get(svc, "N/A")
+        status = eval_service_status(old_st, new_st)
 
         results.append({
             "item": f"Service: {svc}",
-            "previous": str(old_state),
-            "current": str(new_state),
-            "difference": f"{old_state} → {new_state}" if changed else "No Change",
+            "previous": str(old_st),
+            "current": str(new_st),
             "status": status,
-            "type": "service",
+            "type": "text",
         })
 
     return results
@@ -268,51 +298,30 @@ def compare_services(old, new):
 
 def compare_network(old, new):
     results = []
-
     net_old = old.get("network", {})
     net_new = new.get("network", {})
 
-    # IP Addresses
-    old_ips = net_old.get("ip_addresses", [])
-    new_ips = net_new.get("ip_addresses", [])
-    old_ips_str = ", ".join(old_ips) if isinstance(old_ips, list) else str(old_ips)
-    new_ips_str = ", ".join(new_ips) if isinstance(new_ips, list) else str(new_ips)
-    ip_changed = old_ips_str != new_ips_str
+    old_ips = ", ".join(net_old.get("ip_addresses", [])) or "None"
+    new_ips = ", ".join(net_new.get("ip_addresses", [])) or "None"
+    ip_changed = old_ips != new_ips
+
     results.append({
-        "item": "IP Addresses",
-        "previous": old_ips_str or "N/A",
-        "current": new_ips_str or "N/A",
-        "difference": "Changed" if ip_changed else "No Change",
+        "item": "Configured IP Addresses",
+        "previous": old_ips,
+        "current": new_ips,
         "status": "CHANGED" if ip_changed else "NO_CHANGE",
         "type": "text",
     })
 
-    # Routes
-    old_routes = net_old.get("routes", [])
-    new_routes = net_new.get("routes", [])
-    old_routes_str = "\n".join(old_routes) if isinstance(old_routes, list) else str(old_routes)
-    new_routes_str = "\n".join(new_routes) if isinstance(new_routes, list) else str(new_routes)
-    route_changed = old_routes_str != new_routes_str
-
-    diff_desc = "No Change"
-    if route_changed:
-        old_set = set(old_routes) if isinstance(old_routes, list) else set()
-        new_set = set(new_routes) if isinstance(new_routes, list) else set()
-        removed = old_set - new_set
-        added = new_set - old_set
-        desc_parts = []
-        if removed:
-            desc_parts.append(f"Removed routes: {', '.join(removed)}")
-        if added:
-            desc_parts.append(f"Added routes: {', '.join(added)}")
-        diff_desc = "; ".join(desc_parts) if desc_parts else "Routing table changed"
+    old_routes = len(net_old.get("routes", []))
+    new_routes = len(net_new.get("routes", []))
+    route_changed = old_routes != new_routes
 
     results.append({
-        "item": "Network Routes (route -n)",
-        "previous": old_routes_str or "N/A",
-        "current": new_routes_str or "N/A",
-        "difference": diff_desc,
-        "status": "WARNING" if route_changed else "NO_CHANGE",
+        "item": "Active Network Routes",
+        "previous": f"{old_routes} routes active",
+        "current": f"{new_routes} routes active",
+        "status": "CHANGED" if route_changed else "NO_CHANGE",
         "type": "text",
     })
 
@@ -321,32 +330,29 @@ def compare_network(old, new):
 
 def compare_security(old, new):
     results = []
-
     sec_old = old.get("security", {})
     sec_new = new.get("security", {})
 
-    # SELinux
-    old_se = sec_old.get("selinux", "N/A")
-    new_se = sec_new.get("selinux", "N/A")
-    se_changed = str(old_se) != str(new_se)
+    old_sel = sec_old.get("selinux", "N/A")
+    new_sel = sec_new.get("selinux", "N/A")
+    sel_changed = old_sel != new_sel
+
     results.append({
-        "item": "SELinux Mode",
-        "previous": str(old_se),
-        "current": str(new_se),
-        "difference": f"{old_se} → {new_se}" if se_changed else "No Change",
-        "status": "CHANGED" if se_changed else "NO_CHANGE",
+        "item": "SELinux Status",
+        "previous": str(old_sel),
+        "current": str(new_sel),
+        "status": "CHANGED" if sel_changed else "NO_CHANGE",
         "type": "text",
     })
 
-    # NTP
     old_ntp = sec_old.get("ntp", "N/A")
     new_ntp = sec_new.get("ntp", "N/A")
-    ntp_changed = str(old_ntp) != str(new_ntp)
+    ntp_changed = old_ntp != new_ntp
+
     results.append({
-        "item": "NTP Synchronization",
+        "item": "NTP Time Synchronization",
         "previous": str(old_ntp),
         "current": str(new_ntp),
-        "difference": f"{old_ntp} → {new_ntp}" if ntp_changed else "No Change",
         "status": "CHANGED" if ntp_changed else "NO_CHANGE",
         "type": "text",
     })
@@ -392,12 +398,20 @@ def generate_summary(categories):
 @compare_bp.route("/compare/<hostname>/run", methods=["GET", "POST"])
 def compare_page(hostname):
     """Unified route handling comparison GET and POST. Never returns blank page."""
+    host_dir = os.path.join(Config.WEB_ROOT, hostname)
+    if not os.path.isdir(host_dir):
+        logger.warning("Compare requested for non-existent host directory: %s", hostname)
+        abort(404)
+
     reports = get_json_reports(hostname)
 
-    report_old = request.form.get("report_old") or request.args.get("report_old")
-    report_new = request.form.get("report_new") or request.args.get("report_new")
+    raw_old = request.form.get("report_old") or request.args.get("report_old")
+    raw_new = request.form.get("report_new") or request.args.get("report_new")
 
-    # Default to latest and 2nd latest if not selected
+    report_old = resolve_json_filename(raw_old) if raw_old else None
+    report_new = resolve_json_filename(raw_new) if raw_new else None
+
+    # Auto-select latest (new) and 2nd latest (old) if not specified
     if len(reports) >= 2:
         if not report_new:
             report_new = reports[0]["filename"]
@@ -408,31 +422,54 @@ def compare_page(hostname):
     summary = None
     error_msg = None
 
+    # Detailed Backend Logging
+    logger.info("============================================================")
+    logger.info("COMPARE WORKFLOW EXECUTED FOR HOST: %s", hostname)
+    logger.info("Selected Previous Report (Raw): %s | Resolved JSON: %s", raw_old, report_old)
+    logger.info("Selected Current Report (Raw) : %s | Resolved JSON: %s", raw_new, report_new)
+    logger.info("Total JSON Reports Available  : %d", len(reports))
+
     if len(reports) < 2:
         error_msg = "At least two JSON health reports are required to perform a Before vs After activity comparison."
+        logger.warning("Comparison aborted: insufficient reports (%d < 2) for %s", len(reports), hostname)
     elif report_old and report_new:
-        host_dir = os.path.join(Config.WEB_ROOT, hostname)
         old_path = os.path.join(host_dir, report_old)
         new_path = os.path.join(host_dir, report_new)
 
-        if os.path.isfile(old_path) and os.path.isfile(new_path):
-            old_data = load_json(old_path)
-            new_data = load_json(new_path)
+        old_exists = os.path.isfile(old_path)
+        new_exists = os.path.isfile(new_path)
 
-            if old_data and new_data:
-                categories = {
-                    "System Information": compare_system(old_data, new_data),
-                    "Storage & Mount Points": compare_storage(old_data, new_data),
-                    "Memory & Swap Usage": compare_memory(old_data, new_data),
-                    "Key Services": compare_services(old_data, new_data),
-                    "Network & Routes": compare_network(old_data, new_data),
-                    "Security & NTP": compare_security(old_data, new_data),
-                }
-                summary = generate_summary(categories)
-            else:
-                error_msg = "Failed to parse one or both JSON report files."
+        old_size = os.path.getsize(old_path) if old_exists else 0
+        new_size = os.path.getsize(new_path) if new_exists else 0
+
+        logger.info("Resolved Previous File Path: %s | Exists: %s | Size: %d bytes", old_path, old_exists, old_size)
+        logger.info("Resolved Current File Path : %s | Exists: %s | Size: %d bytes", new_path, new_exists, new_size)
+
+        old_data, old_err = load_json(old_path)
+        new_data, new_err = load_json(new_path)
+
+        logger.info("JSON Parse Status (Previous): %s", "SUCCESS" if old_data else f"FAILED ({old_err})")
+        logger.info("JSON Parse Status (Current) : %s", "SUCCESS" if new_data else f"FAILED ({new_err})")
+        logger.info("============================================================")
+
+        if old_data and new_data:
+            categories = {
+                "System Information": compare_system(old_data, new_data),
+                "Storage & Mount Points": compare_storage(old_data, new_data),
+                "Memory & Swap Usage": compare_memory(old_data, new_data),
+                "Key Services": compare_services(old_data, new_data),
+                "Network & Routes": compare_network(old_data, new_data),
+                "Security & NTP": compare_security(old_data, new_data),
+            }
+            summary = generate_summary(categories)
         else:
-            error_msg = "Selected report files do not exist."
+            err_details = []
+            if old_err:
+                err_details.append(f"Previous Report ({report_old}): {old_err}")
+            if new_err:
+                err_details.append(f"Current Report ({report_new}): {new_err}")
+            
+            error_msg = "Unable to parse one or both report files.\n" + "\n".join(err_details)
 
     return render_template(
         "compare.html",

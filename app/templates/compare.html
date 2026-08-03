@@ -3,72 +3,99 @@
 {% block title %}Compare Reports — {{ hostname }} — Enterprise Linux Health Dashboard{% endblock %}
 
 {% block content %}
-<div class="breadcrumb">
-    <a href="{{ url_for('dashboard.index') }}">Dashboard</a>
-    <span class="breadcrumb-sep">&rsaquo;</span>
-    <a href="{{ url_for('report.history', hostname=hostname) }}">{{ hostname }}</a>
-    <span class="breadcrumb-sep">&rsaquo;</span>
-    <span>Report Comparison</span>
-</div>
-
 <div class="page-header-row">
     <div class="page-title">
         <h2>Before vs After Activity Report Comparison</h2>
-        <p class="page-subtitle">Host: <strong>{{ hostname }}</strong> &middot; Compare infrastructure metrics before and after maintenance, patching, or configuration changes</p>
+        <p class="page-subtitle">Host: <strong>{{ hostname }}</strong> &middot; Evaluate infrastructure health changes before and after maintenance, patching, or upgrades</p>
     </div>
 </div>
 
 {% if error_msg %}
-<div class="alert-box alert-warning-yellow">
-    <span>&#x26A0;</span> {{ error_msg }}
+<div class="alert-box alert-warning-yellow" style="max-width:800px;margin:16px auto;white-space:pre-line;">
+    <div style="display:flex;align-items:flex-start;gap:12px;">
+        <i data-lucide="triangle-alert" style="width:20px;height:20px;color:#d97706;flex-shrink:0;margin-top:2px;"></i>
+        <div>
+            <strong style="font-size:1.02em;">Report Comparison Warning</strong>
+            <p style="margin-top:4px;font-size:0.9em;line-height:1.5;">{{ error_msg }}</p>
+        </div>
+    </div>
 </div>
 {% endif %}
 
-<!-- Selector Form -->
-<div class="compare-selector">
-    <form method="POST" action="{{ url_for('compare.compare_page', hostname=hostname) }}" class="compare-form">
-        <div class="selector-row">
-            <div class="selector-group">
-                <label for="report_old">Previous Report (Before Activity)</label>
+<!-- Centered Modern Compare Selection Card -->
+<div class="compare-selector-card">
+    <div class="compare-card-header">
+        <div class="compare-card-title-wrap">
+            <i data-lucide="git-compare-arrows" style="width:22px;height:22px;color:#1754D1;"></i>
+            <div>
+                <h3>Compare Reports</h3>
+                <p>Compare two infrastructure snapshots to detect environment changes</p>
+            </div>
+        </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('compare.compare_page', hostname=hostname) }}" class="compare-card-form">
+        <!-- Previous Report Selection -->
+        <div class="selector-field-group">
+            <label for="report_old">
+                <i data-lucide="clock-3" style="width:16px;height:16px;color:#6B7280;"></i> Previous Report (Before Activity)
+            </label>
+            <div class="select-wrapper">
                 <select name="report_old" id="report_old" required>
                     {% for r in json_reports %}
                     <option value="{{ r.filename }}" {% if report_old == r.filename %}selected{% endif %}>
-                        {{ r.mtime_str }} — {{ r.filename }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="selector-arrow">&rarr;</div>
-            <div class="selector-group">
-                <label for="report_new">Current Report (After Activity)</label>
-                <select name="report_new" id="report_new" required>
-                    {% for r in json_reports %}
-                    <option value="{{ r.filename }}" {% if report_new == r.filename %}selected{% endif %}>
-                        {{ r.mtime_str }} — {{ r.filename }}
+                        {{ r.mtime_str }} — {{ r.filename }} ({{ r.size_kb }} KB)
                     </option>
                     {% endfor %}
                 </select>
             </div>
         </div>
-        <div class="selector-actions">
+
+        <!-- Vertical Down Arrow Divider -->
+        <div class="compare-down-arrow">
+            <i data-lucide="arrow-down" style="width:20px;height:20px;color:#1754D1;"></i>
+        </div>
+
+        <!-- Current Report Selection -->
+        <div class="selector-field-group">
+            <label for="report_new">
+                <i data-lucide="file-check-2" style="width:16px;height:16px;color:#1754D1;"></i> Current Report (After Activity)
+            </label>
+            <div class="select-wrapper">
+                <select name="report_new" id="report_new" required>
+                    {% for r in json_reports %}
+                    <option value="{{ r.filename }}" {% if report_new == r.filename %}selected{% endif %}>
+                        {{ r.mtime_str }} — {{ r.filename }} ({{ r.size_kb }} KB)
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <!-- Action Button -->
+        <div class="compare-submit-wrap">
             {% if json_reports|length >= 2 %}
-            <button type="submit" class="btn btn-compare">&#x1F50D; Compare Reports</button>
+            <button type="submit" class="btn btn-primary compare-submit-btn">
+                <i data-lucide="git-compare-arrows" style="width:18px;height:18px;"></i> Compare Reports
+            </button>
             {% else %}
-            <button type="button" class="btn btn-disabled" disabled>At least two reports are required for comparison</button>
+            <button type="button" class="btn btn-disabled compare-submit-btn" disabled>
+                At least two reports are required
+            </button>
             {% endif %}
         </div>
     </form>
 </div>
 
 {% if summary and results %}
-<!-- Comparison Meta Card -->
+<!-- Comparison Summary Results Meta Card -->
 <div class="compare-meta-card">
     <div class="compare-flow-row">
         <div class="flow-box">
             <div class="flow-box-label">Before Report (Previous)</div>
             <div class="flow-box-val mono">{{ report_old }}</div>
         </div>
-        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-arrow"><i data-lucide="arrow-right" style="width:18px;height:18px;"></i></div>
         <div class="flow-box">
             <div class="flow-box-label">After Report (Current)</div>
             <div class="flow-box-val mono">{{ report_new }}</div>
@@ -76,11 +103,18 @@
         <div class="flow-box">
             <div class="flow-box-label">Overall Health Status</div>
             <div class="flow-box-val">
-                <span class="status-badge status-{{ summary.overall|lower }}">{{ summary.overall }}</span>
+                {% if summary.overall == 'PASS' %}
+                <span class="status-badge status-healthy">PASS</span>
+                {% elif summary.overall == 'WARNING' %}
+                <span class="status-badge status-warning">WARNING</span>
+                {% else %}
+                <span class="status-badge status-danger">FAIL</span>
+                {% endif %}
             </div>
         </div>
     </div>
 
+    <!-- Summary Stat Pills -->
     <div class="summary-stats">
         <div class="stat-pill">
             <span class="stat-pill-label">Total Checks</span>
@@ -110,7 +144,7 @@
 <div class="compare-category-block">
     <div class="category-block-title">
         <span>{{ category }}</span>
-        <span style="font-size:0.8em;color:#6b7280;">{{ items|length }} metrics evaluated</span>
+        <span style="font-size:0.82em;color:#6B7280;font-weight:500;">{{ items|length }} metrics evaluated</span>
     </div>
     <div class="table-responsive">
         <table class="data-table">
@@ -119,13 +153,13 @@
                     <th style="width:25%;">Item / Metric</th>
                     <th style="width:30%;">Previous Value</th>
                     <th style="width:30%;">Current Value</th>
-                    <th style="width:15%;">Status</th>
+                    <th style="width:15%;text-align:center;">Status</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in items %}
                 <tr>
-                    <td class="mono" style="font-weight:700;">{{ item.item }}</td>
+                    <td class="mono" style="font-weight:600;color:#202939;">{{ item.item }}</td>
                     
                     <!-- Previous Value Cell -->
                     <td>
@@ -156,25 +190,13 @@
                     </td>
 
                     <!-- Status Cell -->
-                    <td>
-                        {% if item.status == 'NO_CHANGE' %}
-                        <span class="status-badge status-nochange">No Change</span>
-                        {% elif item.status == 'CHANGED' %}
-                        <span class="status-badge status-changed">Changed</span>
-                        {% elif item.status == 'RUNNING' or item.status == 'PASS' %}
-                        <span class="status-badge status-healthy">Running</span>
-                        {% elif item.status == 'STOPPED' or item.status == 'FAIL' %}
-                        <span class="status-badge status-danger">Stopped</span>
-                        {% elif item.status == 'RESTARTED' %}
-                        <span class="status-badge status-info">Restarted</span>
-                        {% elif item.status == 'NEW' %}
-                        <span class="status-badge status-info">New</span>
-                        {% elif item.status == 'REMOVED' %}
-                        <span class="status-badge status-danger">Removed</span>
-                        {% elif item.status == 'WARNING' %}
-                        <span class="status-badge status-warning">Warning</span>
+                    <td style="text-align:center;">
+                        {% if item.status in ['PASS', 'RUNNING', 'HEALTHY', 'NO_CHANGE'] %}
+                        <span class="status-badge status-healthy">{{ item.status }}</span>
+                        {% elif item.status in ['WARNING', 'CHANGED', 'RESTARTED', 'NEW'] %}
+                        <span class="status-badge status-warning">{{ item.status }}</span>
                         {% else %}
-                        <span class="status-badge status-info">{{ item.status }}</span>
+                        <span class="status-badge status-danger">{{ item.status }}</span>
                         {% endif %}
                     </td>
                 </tr>
@@ -187,7 +209,9 @@
 
 {% endif %}
 
-<div class="back-link">
-    <a href="{{ url_for('dashboard.index') }}" class="btn btn-sm btn-primary">&larr; Back to Dashboard</a>
+<div style="margin-top:24px;">
+    <a href="{{ url_for('dashboard.index') }}" class="btn btn-secondary">
+        <i data-lucide="arrow-left" style="width:16px;height:16px;"></i> Back to Dashboard
+    </a>
 </div>
 {% endblock %}

@@ -390,11 +390,21 @@ HTMLMETA
             font-weight: 600;
         }
 
+        .side-nav [data-lucide] {
+            width: 14px !important;
+            height: 14px !important;
+        }
+        .side-nav-title [data-lucide] {
+            width: 14px !important;
+            height: 14px !important;
+        }
         .nav-item-icon {
             display: inline-block;
             margin-right: 8px;
+            width: 14px;
+            height: 14px;
+            vertical-align: -2px;
             opacity: 0.75;
-            font-size: 0.95em;
         }
 
         .main-content {
