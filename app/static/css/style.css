@@ -890,55 +890,90 @@ a:hover { text-decoration: underline; }
     .compare-row-grid { grid-template-columns: 1fr; }
 }
 
-/* Compare Summary Header Grid */
-.compare-summary-header-grid {
+/* 6 Summary Cards Row in Equal-Width Grid with 24px Gap */
+.compare-summary-grid-6 {
     display: grid;
-    grid-template-columns: 1fr 1fr 180px 160px;
-    gap: 20px;
-    align-items: center;
-}
-@media (max-width: 992px) {
-    .compare-summary-header-grid { grid-template-columns: 1fr 1fr; }
+    grid-template-columns: repeat(6, 1fr);
+    gap: 24px;
+    margin-bottom: 28px;
+    width: 100%;
 }
 
-.meta-summary-box {
-    background: #F6F8FC;
+@media (max-width: 1400px) {
+    .compare-summary-grid-6 {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .compare-summary-grid-6 {
+        grid-template-columns: 1fr;
+    }
+}
+
+.summary-card-box {
+    background: #ffffff;
     border: 1px solid #E6EAF2;
-    border-radius: 12px;
-    padding: 16px 20px;
+    border-radius: 16px;
+    padding: 20px 18px;
+    box-shadow: 0 4px 20px rgba(32, 41, 57, 0.05);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    justify-content: center;
+    min-height: 120px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.meta-summary-label {
-    font-size: 0.78em;
-    font-weight: 600;
+.summary-card-box:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(32, 41, 57, 0.08);
+}
+
+.summary-card-icon-wrap {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 10px;
+    flex-shrink: 0;
+}
+
+.summary-card-label {
+    font-size: 0.76em;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: #6B7280;
+    color: #64748B;
+    margin-bottom: 4px;
 }
 
-.meta-summary-time {
-    font-size: 1.05em;
-    font-weight: 600;
-    color: #202939;
+.summary-card-value {
+    font-size: 1.6em;
+    font-weight: 700;
+    color: #1E293B;
+    line-height: 1.2;
+}
+
+.summary-card-value-sm {
+    font-size: 0.95em;
+    font-weight: 700;
+    color: #1E293B;
+    line-height: 1.2;
+}
+
+.summary-card-sub {
+    font-size: 0.75em;
+    color: #64748B;
     margin-top: 4px;
-}
-
-.meta-summary-filename {
-    font-size: 0.82em;
-    color: #1754D1;
-    margin-top: 2px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    max-width: 100%;
 }
-
-.meta-summary-stat-val {
-    font-size: 1.6em;
-    font-weight: 700;
-    margin-top: 2px;
-}
-.meta-summary-stat-val.val-healthy { color: #16A34A; }
-.meta-summary-stat-val.val-drift { color: #C61D24; }
 
 .no-drift-banner {
     display: flex;

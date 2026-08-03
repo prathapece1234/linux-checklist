@@ -89,40 +89,82 @@
 </div>
 
 {% if summary and results %}
-<!-- Comparison Result Dashboard Summary Header Card -->
-<div class="compare-meta-card">
-    <div class="compare-summary-header-grid">
-        <!-- Before Report Info -->
-        <div class="meta-summary-box">
-            <div class="meta-summary-label">Before Report (Previous)</div>
-            <div class="meta-summary-time">{{ summary.report_old_time }}</div>
-            <div class="meta-summary-filename mono">{{ report_old }}</div>
+<!-- 6 Summary Cards Row in Equal-Width Grid -->
+<div class="compare-summary-grid-6">
+    <!-- Card 1: Before Report -->
+    <div class="summary-card-box">
+        <div class="summary-card-icon-wrap" style="background:#EFF6FF;color:#2563EB;">
+            <i data-lucide="history" style="width:20px;height:20px;"></i>
         </div>
-
-        <!-- Current Report Info -->
-        <div class="meta-summary-box">
-            <div class="meta-summary-label">Current Report (After)</div>
-            <div class="meta-summary-time">{{ summary.report_new_time }}</div>
-            <div class="meta-summary-filename mono">{{ report_new }}</div>
+        <div class="summary-card-body">
+            <div class="summary-card-label">Before Report (Previous)</div>
+            <div class="summary-card-value-sm">{{ summary.report_old_time }}</div>
+            <div class="summary-card-sub mono">{{ report_old }}</div>
         </div>
+    </div>
 
-        <!-- Overall Status -->
-        <div class="meta-summary-box">
-            <div class="meta-summary-label">Overall Status</div>
-            <div style="margin-top:6px;">
+    <!-- Card 2: Current Report -->
+    <div class="summary-card-box">
+        <div class="summary-card-icon-wrap" style="background:#F0FDF4;color:#16A34A;">
+            <i data-lucide="clock" style="width:20px;height:20px;"></i>
+        </div>
+        <div class="summary-card-body">
+            <div class="summary-card-label">Current Report (After)</div>
+            <div class="summary-card-value-sm">{{ summary.report_new_time }}</div>
+            <div class="summary-card-sub mono">{{ report_new }}</div>
+        </div>
+    </div>
+
+    <!-- Card 3: Overall Status -->
+    <div class="summary-card-box">
+        <div class="summary-card-icon-wrap" style="background:{% if summary.overall == 'HEALTHY' %}#F0FDF4;color:#16A34A;{% else %}#FEF2F2;color:#DC2626;{% endif %}">
+            <i data-lucide="{% if summary.overall == 'HEALTHY' %}shield-check{% else %}shield-alert{% endif %}" style="width:20px;height:20px;"></i>
+        </div>
+        <div class="summary-card-body">
+            <div class="summary-card-label">Overall Status</div>
+            <div style="margin-top:4px;">
                 {% if summary.overall == 'HEALTHY' %}
-                <span class="status-badge status-healthy" style="font-size:0.95em;padding:6px 16px;">Healthy</span>
+                <span class="status-badge status-healthy" style="padding:4px 12px;font-size:0.85em;">Healthy</span>
                 {% else %}
-                <span class="status-badge status-warning" style="font-size:0.95em;padding:6px 16px;">Drift Detected</span>
+                <span class="status-badge status-warning" style="padding:4px 12px;font-size:0.85em;">Drift Detected</span>
                 {% endif %}
             </div>
         </div>
+    </div>
 
-        <!-- Changes Count -->
-        <div class="meta-summary-box">
-            <div class="meta-summary-label">Configuration Drift</div>
-            <div class="meta-summary-stat-val {% if summary.drift_count > 0 %}val-drift{% else %}val-healthy{% endif %}">
+    <!-- Card 4: Configuration Drift -->
+    <div class="summary-card-box">
+        <div class="summary-card-icon-wrap" style="background:{% if summary.drift_count > 0 %}#FEF2F2;color:#DC2626;{% else %}#F0FDF4;color:#16A34A;{% endif %}">
+            <i data-lucide="git-compare" style="width:20px;height:20px;"></i>
+        </div>
+        <div class="summary-card-body">
+            <div class="summary-card-label">Configuration Drift</div>
+            <div class="summary-card-value {% if summary.drift_count > 0 %}text-danger{% else %}text-success{% endif %}">
                 {{ summary.drift_count }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 5: Total Checks -->
+    <div class="summary-card-box">
+        <div class="summary-card-icon-wrap" style="background:#F3F4F6;color:#4B5563;">
+            <i data-lucide="list-checks" style="width:20px;height:20px;"></i>
+        </div>
+        <div class="summary-card-body">
+            <div class="summary-card-label">Total Checks</div>
+            <div class="summary-card-value">{{ summary.total_evaluated }}</div>
+        </div>
+    </div>
+
+    <!-- Card 6: Changes Detected -->
+    <div class="summary-card-box">
+        <div class="summary-card-icon-wrap" style="background:#FFFBEB;color:#D97706;">
+            <i data-lucide="activity" style="width:20px;height:20px;"></i>
+        </div>
+        <div class="summary-card-body">
+            <div class="summary-card-label">Changes Detected</div>
+            <div class="summary-card-value {% if summary.changes_count > 0 %}text-warning{% else %}text-muted{% endif %}">
+                {{ summary.changes_count }}
             </div>
         </div>
     </div>
@@ -155,7 +197,7 @@
             <tbody>
                 {% for item in items %}
                 <tr>
-                    <td class="mono" style="font-weight:600;color:#202939;">{{ item.item }}</td>
+                    <td class="mono" style="font-weight:600;color:#202939;white-space:nowrap;">{{ item.item }}</td>
                     
                     <!-- Previous Value Cell -->
                     <td>

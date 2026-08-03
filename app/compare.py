@@ -211,20 +211,57 @@ def compare_memory(old, new):
 
 
 def normalize_service_status(st):
-    st_upper = str(st).strip().upper() if st else "NOT_INSTALLED"
-    if st_upper in ("RUNNING", "ACTIVE"):
-        return "Running"
-    elif st_upper in ("STOPPED", "INACTIVE", "DEAD"):
-        return "Stopped"
-    elif st_upper in ("FAILED", "ERROR"):
-        return "Failed"
-    elif st_upper in ("NOT_INSTALLED", "N/A", "UNKNOWN", ""):
+    """
+    Extract and normalize service operational state.
+    Returns: 'Running', 'Active', 'Failed', 'Inactive', or 'Not Installed'.
+    """
+    if not st:
         return "Not Installed"
-    return st_upper.title()
+    
+    st_str = str(st).strip()
+    st_upper = st_str.upper()
+
+    # Check for Not Installed / Unit not found patterns
+    if (
+        "NOT INSTALLED" in st_upper or
+        "NOT_INSTALLED" in st_upper or
+        "UNIT COULD NOT BE FOUND" in st_upper or
+        "LOADED: NOT-FOUND" in st_upper or
+        "COULD NOT BE FOUND" in st_upper or
+        "N/A" in st_upper or
+        "UNKNOWN" in st_upper or
+        "CANNOT STAT" in st_upper
+    ):
+        return "Not Installed"
+
+    # Extract Active line if multiline systemctl status string is passed
+    if "ACTIVE:" in st_upper:
+        for line in st_str.splitlines():
+            line_u = line.strip().upper()
+            if line_u.startswith("ACTIVE:"):
+                if "ACTIVE (RUNNING)" in line_u or "RUNNING" in line_u:
+                    return "Running"
+                elif "ACTIVE (EXITED)" in line_u or "ACTIVE" in line_u:
+                    return "Active"
+                elif "FAILED" in line_u:
+                    return "Failed"
+                elif "INACTIVE" in line_u or "DEAD" in line_u or "STOPPED" in line_u:
+                    return "Inactive"
+
+    if "ACTIVE (RUNNING)" in st_upper or "RUNNING" in st_upper:
+        return "Running"
+    elif "ACTIVE (EXITED)" in st_upper or "ACTIVE" in st_upper:
+        return "Active"
+    elif "FAILED" in st_upper:
+        return "Failed"
+    elif "INACTIVE" in st_upper or "STOPPED" in st_upper or "DEAD" in st_upper:
+        return "Inactive"
+
+    return "Not Installed"
 
 
 def compare_services(old, new):
-    """Compare Service State (Running, Stopped, Failed, Not Installed). Ignore logs/timestamps/PIDs."""
+    """Compare Service State (Running, Active, Failed, Inactive, Not Installed). Ignore logs/timestamps/PIDs."""
     results = []
     svc_old = old.get("services", {})
     svc_new = new.get("services", {})
@@ -239,42 +276,28 @@ def compare_services(old, new):
         norm_old = normalize_service_status(raw_old)
         norm_new = normalize_service_status(raw_new)
 
+        # Apply strict enterprise service comparison rules
         if norm_old == norm_new:
-            results.append({
-                "item": f"Service: {svc}",
-                "previous": norm_old,
-                "current": norm_new,
-                "status": "NO_CHANGE",
-                "is_drift": False,
-                "type": "text",
-            })
+            status = "NO_CHANGE"
+            is_drift = False
         elif norm_old == "Not Installed" and norm_new != "Not Installed":
-            results.append({
-                "item": f"Service: {svc}",
-                "previous": norm_old,
-                "current": norm_new,
-                "status": "ADDED",
-                "is_drift": True,
-                "type": "text",
-            })
+            status = "ADDED"
+            is_drift = True
         elif norm_old != "Not Installed" and norm_new == "Not Installed":
-            results.append({
-                "item": f"Service: {svc}",
-                "previous": norm_old,
-                "current": norm_new,
-                "status": "REMOVED",
-                "is_drift": True,
-                "type": "text",
-            })
+            status = "REMOVED"
+            is_drift = True
         else:
-            results.append({
-                "item": f"Service: {svc}",
-                "previous": norm_old,
-                "current": norm_new,
-                "status": "CHANGED",
-                "is_drift": True,
-                "type": "text",
-            })
+            status = "CHANGED"
+            is_drift = True
+
+        results.append({
+            "item": f"Service: {svc}",
+            "previous": norm_old,
+            "current": norm_new,
+            "status": status,
+            "is_drift": is_drift,
+            "type": "text",
+        })
 
     return results
 
@@ -419,6 +442,7 @@ def compare_security(old, new):
 def generate_summary(categories, report_old_time, report_new_time):
     """Calculate meaningful configuration drift summary statistics."""
     drift_count = 0
+    changes_count = 0
     total_evaluated = 0
 
     for cat_results in categories.values():
@@ -426,12 +450,15 @@ def generate_summary(categories, report_old_time, report_new_time):
             total_evaluated += 1
             if item.get("is_drift", False):
                 drift_count += 1
+            if item.get("status") in ("CHANGED", "ADDED", "REMOVED"):
+                changes_count += 1
 
-    overall = "HEALTHY" if drift_count == 0 else "CHANGED"
+    overall = "HEALTHY" if drift_count == 0 else "DRIFT DETECTED"
 
     return {
         "overall": overall,
         "drift_count": drift_count,
+        "changes_count": changes_count,
         "total_evaluated": total_evaluated,
         "report_old_time": report_old_time,
         "report_new_time": report_new_time,
